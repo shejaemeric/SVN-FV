@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
 import Card from '../components/Card';
@@ -71,7 +71,7 @@ export default function AddBatch() {
   };
 
   // Handle product selection
-  const handleProductSelect = (productId) => {
+  const handleProductSelect = useCallback((productId) => {
     console.log(productId);
     const product = products.find(p => p.product_id === productId);
     if (product) {
@@ -79,7 +79,7 @@ export default function AddBatch() {
       setProductId(product.qr_code);
       setShowNewProductPrompt(false);
     }
-  };
+  }, [products]);
 
   // Handle scan barcode
   const handleScanBarcode = () => {

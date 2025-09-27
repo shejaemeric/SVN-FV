@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import NotificationToast from '../components/ErrorToast';
 import Modal from '../components/Modal';
-import { salesAPI, productAPI, customerAPI, handleAPIError } from '../services/api';
+import { salesAPI, handleAPIError } from '../services/api';
 import { formatCurrencyWhole, formatNumberWithCommas } from '../utils/numberUtils';
 import { exportTableToPDF, getTableColumns } from '../utils/exportUtils';
 
@@ -32,15 +32,11 @@ export default function Sales() {
     setLoading(true);
     setError('');
     try {
-      const [salesResponse, productsResponse, customersResponse] = await Promise.all([
-        salesAPI.getAllSales(),
-        productAPI.getAllProducts(),
-        customerAPI.getAllCustomers()
+      const [salesResponse] = await Promise.all([
+        salesAPI.getAllSales()
       ]);
       
       setSales(Array.isArray(salesResponse) ? salesResponse : (salesResponse.data || salesResponse.sales || []));
-      setProducts(Array.isArray(productsResponse) ? productsResponse : (productsResponse.data || productsResponse.products || []));
-      setCustomers(Array.isArray(customersResponse) ? customersResponse : (customersResponse.data || customersResponse.customers || []));
     } catch (err) {
       console.error('Failed to fetch data:', err);
       setError(handleAPIError(err));
