@@ -12,7 +12,7 @@ export function PrimaryButton({ children, className = '', ...props }) {
 export function SecondaryButton({ children, className = '', ...props }) {
   return (
     <button
-      className={`w-full py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors ${className}`}
+      className={`w-fit px-4 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition-colors ${className}`}
       {...props}
     >
       {children}

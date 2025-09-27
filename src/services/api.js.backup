@@ -1,0 +1,319 @@
+// API Base URL - update this to match your backend URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Helper function to handle API responses
+const handleResponse = async (response) => {
+  console.log("API Response status:", response.status);
+  console.log("API Response headers:", response.headers);
+  
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+      console.error("API Error response:", errorData);
+    } catch (parseError) {
+      console.error("Failed to parse error response:", parseError);
+      errorData = { message: `HTTP error! status: ${response.status}` };
+    }
+    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  }
+  
+  try {
+    const data = await response.json();
+    console.log("API Success response:", data);
+    return data;
+  } catch (parseError) {
+    console.error("Failed to parse success response:", parseError);
+    // If response is empty or not JSON, return the response text
+    const text = await response.text();
+    console.log("API Response text:", text);
+    return text || response.statusText;
+  }
+};
+
+
+const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const config = {
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  console.log("Making API request to:", url);
+  console.log("Request config:", config);
+
+  try {
+    const response = await fetch(url, config);
+    return await handleResponse(response);
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw error;
+  }
+};
+
+// Product API Functions
+export const productAPI = {
+  // Get all products
+  getAllProducts: async () => {
+    return apiRequest('/get_all_products');
+  },
+
+  // Get product by ID
+  getProductById: async (productId) => {
+    return apiRequest(`/products/${productId}`);
+  },
+
+  // Get product by QR code
+  getProductByQRCode: async (qrCode) => {
+    return apiRequest(`/products/qr/${qrCode}`);
+  },
+
+  // Create new product
+  createProduct: async (productData) => {
+    // Ensure size is sent as integer
+    const dataToSend = {
+      ...productData,
+      size: parseInt(productData.size) || 0
+    };
+    
+    return apiRequest('/create_product', {
+      method: 'POST',
+      body: JSON.stringify(dataToSend),
+    });
+  },
+
+  // Edit product
+  editProduct: async (productData) => {
+    // Ensure size is sent as integer if present
+    const dataToSend = {
+      ...productData,
+      size: productData.size ? parseInt(productData.size) : undefined,
+      name: productData.name || undefined
+    };
+    
+    return apiRequest('/edit_product', {
+      method: 'POST',
+      body: JSON.stringify(dataToSend),
+    });
+  },
+
+  // Delete product
+  deleteProduct: async (qrCode) => {
+    return apiRequest('/delete_product', {
+      method: 'POST',
+      body: JSON.stringify(qrCode),
+    });
+  },
+};
+
+// Batch API Functions
+export const batchAPI = {
+  // Get all batches
+  getAllBatches: async () => {
+    return apiRequest('/batches');
+  },
+
+  // Get batch by ID
+  getBatchById: async (batchId) => {
+    return apiRequest(`/batches/${batchId}`);
+  },
+
+  // Create new batch
+  createBatch: async (batchData) => {
+    return apiRequest('/create_batch', {
+      method: 'POST',
+      body: JSON.stringify(batchData),
+    });
+  },
+
+  // Update batch
+  updateBatch: async (batchId, batchData) => {
+    return apiRequest(`/batches/${batchId}`, {
+      method: 'PUT',
+      body: JSON.stringify(batchData),
+    });
+  },
+
+  // Delete batch
+  deleteBatch: async (batchId) => {
+    return apiRequest(`/batches/${batchId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get batches by product ID
+  getBatchesByProduct: async (productId) => {
+    return apiRequest(`/batches/product/${productId}`);
+  },
+};
+
+// Scanning API Functions
+export const scanAPI = {
+  // Scan item by QR code
+  scanItem: async (qrCode) => {
+    return apiRequest('/scan_item', {
+      method: 'POST',
+      body: JSON.stringify({ qr_code: qrCode }),
+    });
+  },
+};
+
+// Supplier API Functions
+export const supplierAPI = {
+  // Get all suppliers
+  getAllSuppliers: async () => {
+    return apiRequest('/suppliers');
+  },
+
+  // Get supplier by ID
+  getSupplierById: async (supplierId) => {
+    return apiRequest(`/suppliers/${supplierId}`);
+  },
+
+  // Create new supplier
+  createSupplier: async (supplierData) => {
+    return apiRequest('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(supplierData),
+    });
+  },
+
+  // Update supplier
+  updateSupplier: async (supplierId, supplierData) => {
+    return apiRequest(`/suppliers/${supplierId}`, {
+      method: 'PUT',
+      body: JSON.stringify(supplierData),
+    });
+  },
+
+  // Delete supplier
+  deleteSupplier: async (supplierId) => {
+    return apiRequest(`/suppliers/${supplierId}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Inventory API Functions
+export const inventoryAPI = {
+  // Get current inventory
+  getInventory: async () => {
+    return apiRequest('/inventory');
+  },
+
+  // Get inventory by product
+  getInventoryByProduct: async (productId) => {
+    return apiRequest(`/inventory/product/${productId}`);
+  },
+
+  // Update inventory levels
+  updateInventory: async (productId, quantity) => {
+    return apiRequest(`/inventory/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity }),
+    });
+  },
+};
+
+// POS (Point of Sale) API Functions
+export const posAPI = {
+  // Create new order
+  createOrder: async (orderData) => {
+    return apiRequest('/create_order', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  },
+
+  // Create new receipt
+  createReceipt: async (receiptData) => {
+    return apiRequest('/create_receipt', {
+      method: 'POST',
+      body: JSON.stringify(receiptData),
+    });
+  },
+
+  // Get all receipts
+  getAllReceipts: async () => {
+    return apiRequest('/get_all_receipts');
+  },
+
+  // Get receipt by ID
+  getReceiptById: async (receiptId) => {
+    return apiRequest(`/receipts/${receiptId}`);
+  },
+};
+
+// Receipts API Functions
+export const receiptAPI = {
+  // Get all receipts
+  getAllReceipts: async () => {
+    return apiRequest('/receipts');
+  },
+
+  // Get receipt by ID
+  getReceiptById: async (receiptId) => {
+    return apiRequest(`/receipts/${receiptId}`);
+  },
+
+  // Create new receipt
+  createReceipt: async (receiptData) => {
+    return apiRequest('/receipts', {
+      method: 'POST',
+      body: JSON.stringify(receiptData),
+    });
+  },
+};
+
+// Dashboard API Functions
+export const dashboardAPI = {
+  // Get dashboard statistics
+  getDashboardStats: async () => {
+    return apiRequest('/dashboard/stats');
+  },
+
+  // Get monthly sales data
+  getMonthlySales: async (year, month) => {
+    return apiRequest(`/dashboard/sales/monthly?year=${year}&month=${month}`);
+  },
+
+  // Get top selling products
+  getTopSellingProducts: async (limit = 10) => {
+    return apiRequest(`/dashboard/products/top-selling?limit=${limit}`);
+  },
+
+  // Get stock distribution
+  getStockDistribution: async () => {
+    return apiRequest('/dashboard/stock/distribution');
+  },
+};
+
+// Utility function to handle errors
+export const handleAPIError = (error) => {
+  console.error('API Error:', error);
+  
+  // You can add custom error handling here
+  // For example, show toast notifications, redirect to error page, etc.
+  
+  return {
+    success: false,
+    message: error.message || 'An unexpected error occurred',
+  };
+};
+
+// Export all API functions as a single object for convenience
+export const api = {
+  products: productAPI,
+  batches: batchAPI,
+  scan: scanAPI,
+  suppliers: supplierAPI,
+  inventory: inventoryAPI,
+  pos: posAPI,
+  receipts: receiptAPI,
+  dashboard: dashboardAPI,
+};
+
+export default api; 

@@ -26,9 +26,9 @@ export default function ProductListItem({
           className="w-14 text-center bg-gray-100 rounded-md py-1 border border-transparent focus:ring-1 focus:ring-sky-500 focus:outline-none"
         />
       </div>
-      <p className="col-span-2 text-right font-medium text-text-primary">${Number(unitPrice).toFixed(2)}</p>
+      <p className="col-span-2 text-right font-medium text-text-primary">RWF {Number(unitPrice).toFixed(0)}</p>
       <div className="col-span-2 flex items-center justify-end gap-3">
-        <p className="font-semibold text-text-primary">${total}</p>
+        <p className="font-semibold text-text-primary">RWF {Number(total).toFixed(0)}</p>
         <button onClick={onRemove} className="text-gray-400 hover:text-red-500 transition-colors" aria-label={`Remove ${name}`}>
           <i className="fa-solid fa-trash-alt" />
         </button>

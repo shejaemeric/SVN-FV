@@ -20,7 +20,7 @@ export default function ImageUpload({ title = 'Product Image', hint = 'Upload an
   return (
     <Card className="text-center flex-1 flex flex-col justify-center items-center" title={title}>
       <p className="text-sm text-text-secondary mb-4">{hint}</p>
-      <div className="w-48 h-48 bg-gray-100 rounded-xl border-2 border-dashed border-border-light flex items-center justify-center mb-4 overflow-hidden">
+      <div className="w-48 h-48 bg-gray-100 justify-self-center rounded-xl border-2 border-dashed border-border-light flex items-center justify-center mb-4 overflow-hidden">
         {preview ? (
           // eslint-disable-next-line jsx-a11y/img-redundant-alt
           <img src={preview} alt="Product Image Preview" className="w-full h-full object-cover" />

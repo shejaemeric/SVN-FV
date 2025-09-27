@@ -31,7 +31,7 @@ export default function ProductRow({
       <div className="col-span-2 text-center">
         <StatusBar label={statusLabel} colorClass={statusColorClass} barColorClass={barColorClass} percent={statusPercent} />
       </div>
-      <div className="col-span-2 text-right font-medium text-lg text-text-primary">${price}</div>
+      <div className="col-span-2 text-right font-medium text-lg text-text-primary">{price} RWF</div>
       <div className="col-span-3 flex justify-center items-center gap-3">
         <button onClick={onEdit} className="p-2 text-gray-500 hover:text-sky-600 hover:bg-sky-100 rounded-lg transition-colors">
           <i className="fa-solid fa-pen" />

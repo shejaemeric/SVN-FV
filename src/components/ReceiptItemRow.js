@@ -4,9 +4,9 @@ export default function ReceiptItemRow({ name, quantity, unitPrice }) {
     <div className="flex items-start justify-between py-1.5 border-b border-border-light last:border-b-0">
       <div className="pr-2 min-w-0">
         <p className="text-sm text-text-primary font-medium truncate" title={name}>{name}</p>
-        <p className="text-xs text-text-secondary">{quantity} x ${Number(unitPrice).toFixed(2)}</p>
+        <p className="text-xs text-text-secondary">{quantity} x RWF {Number(unitPrice).toFixed(0)}</p>
       </div>
-      <p className="text-text-primary font-semibold font-mono">${lineTotal}</p>
+      <p className="text-text-primary font-semibold font-mono">RWF {Number(lineTotal).toFixed(0)}</p>
     </div>
   );
 } 
