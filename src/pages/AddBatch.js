@@ -9,7 +9,7 @@ import Modal from '../components/Modal';
 import SelectField from '../components/SelectField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import ErrorToast from '../components/ErrorToast';
-import { productAPI, invoiceAPI, scanAPI, supplierAPI, stockAPI, handleAPIError } from '../services/api';
+import { productAPI, invoiceAPI, supplierAPI } from '../services/api';
 
 export default function AddBatch() {
   const [productId, setProductId] = useState('');
@@ -141,37 +141,6 @@ export default function AddBatch() {
     }
   };
 
-  // Handle QR code scan
-  const handleQRScan = async (qrCode) => {
-    try {
-      const response = await scanAPI.scanItem(qrCode);
-      const product = response.data || response;
-      
-      if (product) {
-        // Product found, populate the form
-        setProductId(product.qr_code || qrCode);
-        setLatestTax(product.tax_rate || '');
-        setShowNewProductPrompt(false);
-      } else {
-        // Product not found, show new product prompt
-        setShowNewProductPrompt(true);
-        setProductId(qrCode);
-        setLatestTax('');
-      }
-    } catch (error) {
-      console.error('Failed to scan QR code:', error);
-      handleAPIError(error);
-      
-      // Fallback to local search
-      const product = products.find(p => p.qr_code === qrCode);
-      if (product) {
-        handleProductSelect(product.product_id);
-      } else {
-        setShowNewProductPrompt(true);
-        setProductId(qrCode);
-      }
-    }
-  };
 
   useEffect(() => {
     fetchProducts();
@@ -197,7 +166,7 @@ export default function AddBatch() {
       setShowNewProductPrompt(false);
     }
     }
-  }, [productId, products]);
+  }, [productId, products, handleProductSelect]);
 
   const handleSave = async () => {
     // Validate required fields

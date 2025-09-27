@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
-import Card from '../components/Card';
-import SectionBlock from '../components/SectionBlock';
 import FormField from '../components/FormField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import ErrorToast from '../components/ErrorToast';

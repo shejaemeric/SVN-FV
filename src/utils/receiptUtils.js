@@ -574,12 +574,6 @@ export const generateDashboardPDF = (dashboardData) => {
     y += fontSize + 4;
   };
 
-  const drawLine = () => {
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 10;
-  };
-
   const drawChart = (title, data, type = 'bar') => {
     leftText(title, 12, 'bold');
     y += 5;

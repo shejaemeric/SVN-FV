@@ -216,7 +216,7 @@ export default function Receipts() {
       cashSales: formatCurrency(cashSales),
       customerSales: formatCurrency(customerSales)
     };
-  }, [filteredAndSorted]);
+  }, [filteredAndSorted, formatCurrency]);
 
 
   const viewReceipt = (receipt) => {

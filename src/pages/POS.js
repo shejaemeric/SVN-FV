@@ -1,9 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
-import Header from '../components/Header';
-import ProductListHeader from '../components/ProductListHeader';
 import ProductListItem from '../components/ProductListItem';
-import PriceRow from '../components/PriceRow';
 import FormField from '../components/FormField';
 import ReceiptItemRow from '../components/ReceiptItemRow';
 import Modal from '../components/Modal';

@@ -1,11 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
-import Card from '../components/Card';
-import SectionBlock from '../components/SectionBlock';
-import FormField from '../components/FormField';
-import NumberField from '../components/NumberField';
-import SelectField from '../components/SelectField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import NotificationToast from '../components/ErrorToast';
 import Modal from '../components/Modal';
@@ -15,8 +10,6 @@ import { exportTableToPDF, getTableColumns } from '../utils/exportUtils';
 
 export default function Sales() {
   const [sales, setSales] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

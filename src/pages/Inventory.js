@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
 import TableHeaderRow from '../components/TableHeaderRow';
@@ -9,7 +8,7 @@ import FormField from '../components/FormField';
 import SelectField from '../components/SelectField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import NotificationToast from '../components/ErrorToast';
-import { productAPI, handleAPIError } from '../services/api';
+import { productAPI } from '../services/api';
 import { exportTableToPDF, getTableColumns } from '../utils/exportUtils';
 
 export default function Inventory() {
@@ -27,7 +26,6 @@ export default function Inventory() {
   const [createProduct, setCreateProduct] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showStatusSettings, setShowStatusSettings] = useState(false);
-  const navigate = useNavigate();
 
   // Status management settings
   const [statusSettings, setStatusSettings] = useState({

@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
-import Card from '../components/Card';
-import SectionBlock from '../components/SectionBlock';
-import FormField from '../components/FormField';
 import NumberField from '../components/NumberField';
 import SelectField from '../components/SelectField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
@@ -15,7 +12,6 @@ import { exportTableToPDF, getTableColumns } from '../utils/exportUtils';
 
 export default function Stocks() {
   const [stocks, setStocks] = useState([]);
-  const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,7 +100,6 @@ export default function Stocks() {
       });
       
       setStocks(enrichedStocks);
-      setProducts(productsData);
       setSuppliers(suppliersData);
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -193,21 +188,6 @@ export default function Stocks() {
     return filtered;
   }, [stocks, searchTerm, sortBy, sortOrder, filterBy]);
 
-  const handleCreateStock = async () => {
-    if (!formData.product_id || !formData.buying_price || !formData.number) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-
-    try {
-      // Note: Stock creation is typically done through invoice creation
-      // This would need to be implemented based on the actual API structure
-      setError('Stock creation is handled through the Add Batch page. Please use that page to add new stock.');
-    } catch (err) {
-      console.error('Failed to create stock:', err);
-      setError(handleAPIError(err));
-    }
-  };
 
   const handleEditStock = async () => {
     if (!selectedStock || !formData.number || !formData.supplier_id) {
