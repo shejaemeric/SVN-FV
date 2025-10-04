@@ -406,7 +406,18 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
     }
   }
   
-  doc.save(filename);
+  // Save the PDF and open in new tab
+  const pdfBlob = doc.output('blob');
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  const newWindow = window.open(pdfUrl, '_blank');
+  
+  if (newWindow) {
+    // Clean up URL after a delay
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+  } else {
+    // Fallback to download if popup blocked
+    doc.save(filename);
+  }
 };
 
 export const getTableColumns = (pageType) => {

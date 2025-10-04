@@ -67,6 +67,14 @@ export default function Dashboard() {
       // Process sales data
       const sales = Array.isArray(salesResponse) ? salesResponse : (salesResponse.data || salesResponse.sales || []);
       
+      // Debug logging
+      console.log('Dashboard Data Debug:', {
+        receiptsCount: receipts.length,
+        salesCount: sales.length,
+        sampleReceipt: receipts[0],
+        sampleSale: sales[0]
+      });
+      
       // Process stocks data
       const stocks = Array.isArray(stocksResponse) ? stocksResponse : (stocksResponse.data || stocksResponse.stocks || []);
       
@@ -152,6 +160,114 @@ export default function Dashboard() {
   // Format currency helper (now using utility function)
   const formatCurrency = formatCurrencyWhole;
 
+  // Calculate top selling products from receipts and sales data
+  const calculateTopSellingProducts = (receipts, sales) => {
+    const productSales = {};
+    
+    // First, try to get data from receipts
+    receipts.forEach(receipt => {
+      if (receipt.sales && Array.isArray(receipt.sales)) {
+        receipt.sales.forEach(sale => {
+          const productName = sale.product_name || 'Unknown Product';
+          if (!productSales[productName]) {
+            productSales[productName] = 0;
+          }
+          productSales[productName] += sale.number || 0;
+        });
+      }
+      
+      // Also check if receipt has items array
+      if (receipt.items && Array.isArray(receipt.items)) {
+        receipt.items.forEach(item => {
+          const productName = item.name || item.product_name || 'Unknown Product';
+          if (!productSales[productName]) {
+            productSales[productName] = 0;
+          }
+          productSales[productName] += item.quantity || item.qty || 0;
+        });
+      }
+    });
+    
+    // If no data from receipts, try sales data
+    if (Object.keys(productSales).length === 0 && sales && Array.isArray(sales)) {
+      sales.forEach(sale => {
+        const productName = sale.product_name || 'Unknown Product';
+        if (!productSales[productName]) {
+          productSales[productName] = 0;
+        }
+        productSales[productName] += sale.number || sale.quantity || 0;
+      });
+    }
+    
+    // Sort and get top 5
+    const topProducts = Object.entries(productSales)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([name, value]) => ({
+        name: name.length > 15 ? name.substring(0, 15) + '...' : name,
+        value: value
+      }));
+    
+    return topProducts;
+  };
+
+  // Calculate stock distribution from stocks and products data
+  const calculateStockDistribution = (stocks, products) => {
+    const stockData = { inStock: 0, lowStock: 0, outOfStock: 0 };
+    
+    // First try to use stocks data if available
+    if (stocks && stocks.length > 0) {
+      stocks.forEach(stock => {
+        const currentQuantity = stock.current_number || stock.current_quantity || 0;
+        if (currentQuantity === 0) {
+          stockData.outOfStock++;
+        } else if (currentQuantity <= 5) {
+          stockData.lowStock++;
+        } else {
+          stockData.inStock++;
+        }
+      });
+    } else if (products && products.length > 0) {
+      // Fallback to products data
+      products.forEach(product => {
+        const stock = product.stock || 0;
+        if (stock === 0) {
+          stockData.outOfStock++;
+        } else if (stock <= 5) {
+          stockData.lowStock++;
+        } else {
+          stockData.inStock++;
+        }
+      });
+    }
+    
+    const totalItems = stockData.inStock + stockData.lowStock + stockData.outOfStock;
+    
+    if (totalItems === 0) {
+      return [
+        { name: 'No Stock Data', value: 100, color: '#E9ECEF' }
+      ];
+    }
+    
+    return [
+      { 
+        name: 'In Stock', 
+        value: Math.round((stockData.inStock / totalItems) * 100), 
+        color: '#28A745' 
+      },
+      { 
+        name: 'Low Stock', 
+        value: Math.round((stockData.lowStock / totalItems) * 100), 
+        color: '#FFC107' 
+      },
+      { 
+        name: 'Out of Stock', 
+        value: Math.round((stockData.outOfStock / totalItems) * 100), 
+        color: '#DC3545' 
+      },
+    ];
+  };
+
   // Handle dashboard export
   const handleExportDashboard = async () => {
     try {
@@ -168,20 +284,12 @@ export default function Dashboard() {
         {
           title: 'Stock Distribution Chart',
           type: 'pie',
-          data: dashboardData.products.map(product => ({
-            value: product.stock || 0,
-            name: product.name || 'Unknown Product'
-          }))
+          data: calculateStockDistribution(dashboardData.stocks, dashboardData.products)
         },
         {
           title: 'Top Selling Products Chart',
           type: 'bar',
-          data: dashboardData.receipts.flatMap(receipt => 
-            (receipt.sales || []).map(sale => ({
-              value: sale.number || 0,
-              name: sale.product_name || 'Unknown Product'
-            }))
-          )
+          data: calculateTopSellingProducts(dashboardData.receipts, dashboardData.sales)
         }
       ];
 
