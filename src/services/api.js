@@ -1,5 +1,5 @@
 // API Base URL - update this to match your backend URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
@@ -295,6 +295,21 @@ export const receiptAPI = {
     };
     
     return apiRequest('/create_receipt', {
+      method: 'POST',
+      body: JSON.stringify(dataToSend),
+    });
+  },
+
+  // Edit receipt
+  editReceipt: async (receiptData) => {
+    const dataToSend = {
+      receipt_id: receiptData.receipt_id,
+      sale_creators: receiptData.sale_creators || [],
+      ...(receiptData.customer_id && { customer_id: receiptData.customer_id }),
+      ...(receiptData.unpaid && { unpaid: parseInt(receiptData.unpaid || 0) })
+    };
+    
+    return apiRequest('/edit_receipt', {
       method: 'POST',
       body: JSON.stringify(dataToSend),
     });

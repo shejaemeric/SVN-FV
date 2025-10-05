@@ -70,8 +70,8 @@ export default function POS() {
     () => cartItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0),
     [cartItems]
   );
-  const taxes = useMemo(() => subtotal * 0.18, [subtotal]); // 18% tax rate
-  const total = useMemo(() => subtotal + taxes, [subtotal, taxes]);
+  //const taxes = useMemo(() => subtotal * 0.18, [subtotal]); // 18% tax rate
+  const total = useMemo(() => subtotal, [subtotal]);
 
   // Calculate remaining amount when not paid full
   const remainingAmount = useMemo(() => {
@@ -250,7 +250,7 @@ export default function POS() {
         const product = products.find(p => p.product_id === item.product_id);
         return {
           number: item.quantity,
-          qr_code: product?.qr_code || "2510" // Use actual QR code from product
+          qr_code: product?.qr_code
         };
       });
 
@@ -278,7 +278,7 @@ export default function POS() {
         id: receiptResponse,
         items: cartItems,
         subtotal: subtotal,
-        taxes: taxes,
+        // taxes: taxes,
         total: total,
         amountPaid: notPaidFull ? amountPaid : total,
         remaining: notPaidFull ? remainingAmount : 0,
@@ -495,10 +495,10 @@ export default function POS() {
                 <span className="text-sm text-text-secondary">Subtotal</span>
                 <span className="font-medium">RWF {subtotal.toFixed(0)}</span>
               </div>
-              <div className="flex justify-between items-center py-2">
+{/*               <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-text-secondary">Taxes (18%)</span>
                 <span className="font-medium">RWF {taxes.toFixed(0)}</span>
-              </div>
+              </div> */}
               <div className="border-t border-border-light my-3" />
               <div className="flex justify-between items-center text-xl font-bold bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 p-4 rounded-lg border border-brand-blue/20">
                 <p className="text-brand-blue">Total Amount</p>

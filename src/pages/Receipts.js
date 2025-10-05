@@ -2,14 +2,19 @@ import { useMemo, useState, useEffect } from 'react';
 import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
 import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import SelectField from '../components/SelectField';
+import ProductListItem from '../components/ProductListItem';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import ErrorToast from '../components/ErrorToast';
-import { receiptAPI } from '../services/api';
+import { receiptAPI, productAPI, customerAPI } from '../services/api';
 import { downloadReceiptPDF, printReceipt, downloadReceiptsSummaryPDF, downloadReceiptsCSV } from '../utils/receiptUtils';
 import { formatCurrencyWhole, formatNumberWithCommas } from '../utils/numberUtils';
 
 export default function Receipts() {
   const [receipts, setReceipts] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState('');
@@ -21,10 +26,19 @@ export default function Receipts() {
   const [searchTerm, setSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingReceipt, setEditingReceipt] = useState(null);
+  const [editCartItems, setEditCartItems] = useState([]);
+  const [editSelectedCustomer, setEditSelectedCustomer] = useState('');
+  const [editNotPaidFull, setEditNotPaidFull] = useState(false);
+  const [editAmountPaid, setEditAmountPaid] = useState(0);
+  const [editProcessing, setEditProcessing] = useState(false);
 
-  // Load receipts on component mount
+  // Load receipts, products, and customers on component mount
   useEffect(() => {
     fetchReceipts();
+    fetchProducts();
+    fetchCustomers();
   }, []);
 
   // Close dropdown when clicking outside
@@ -54,6 +68,30 @@ export default function Receipts() {
       setError('Failed to load receipts. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const response = await productAPI.getAllProducts();
+      console.log('Products fetched:', response);
+      const productsData = Array.isArray(response) ? response : (response.data || response.products || []);
+      setProducts(productsData);
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+      // Don't show error for products as it's not critical for receipts view
+    }
+  };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await customerAPI.getAllCustomers();
+      console.log('Customers fetched:', response);
+      const customersData = Array.isArray(response) ? response : (response.data || response.customers || []);
+      setCustomers(customersData);
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+      // Don't show error for customers as it's not critical for receipts view
     }
   };
 
@@ -293,6 +331,154 @@ export default function Receipts() {
     setProductFilter('');
     setProductSearchTerm('');
     setShowProductDropdown(false);
+  };
+
+  // Edit receipt functionality
+  const editReceipt = (receipt) => {
+    setEditingReceipt(receipt);
+    
+    // Convert receipt items to cart format
+    const cartItems = receipt.items.map(item => {
+      const product = products.find(p => p.name === item.name);
+      return {
+        product_id: product?.product_id || 'unknown',
+        name: item.name,
+        unitPrice: item.unitPrice || 0, // unitPrice is already a number
+        quantity: item.qty || 0,
+        image: product?.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'
+      };
+    });
+    
+    setEditCartItems(cartItems);
+    setEditSelectedCustomer(receipt.customer_id || '');
+    setEditNotPaidFull(receipt.notPaidFull || false);
+    setEditAmountPaid(receipt.amountPaid || 0);
+    setShowEditModal(true);
+  };
+
+  // Calculate edit totals
+  const editSubtotal = useMemo(
+    () => editCartItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0),
+    [editCartItems]
+  );
+  
+  const editTotal = useMemo(() => editSubtotal, [editSubtotal]);
+  
+  const editRemainingAmount = useMemo(() => {
+    if (!editNotPaidFull) return 0;
+    return Math.max(0, editTotal - editAmountPaid);
+  }, [editNotPaidFull, editTotal, editAmountPaid]);
+
+  // Update edit cart item quantity
+  const updateEditQuantity = (productId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeEditItem(productId);
+    } else {
+      setEditCartItems(prev => prev.map(item => 
+        item.product_id === productId 
+          ? { ...item, quantity: newQuantity }
+          : item
+      ));
+    }
+  };
+
+  // Remove item from edit cart
+  const removeEditItem = (productId) => {
+    setEditCartItems(prev => prev.filter(item => item.product_id !== productId));
+  };
+
+  // Add product to edit cart
+  const addToEditCart = (product) => {
+    const existingItem = editCartItems.find(item => item.product_id === product.product_id);
+    
+    if (existingItem) {
+      setEditCartItems(prev => prev.map(item => 
+        item.product_id === product.product_id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      const newItem = {
+        product_id: product.product_id,
+        name: product.name,
+        unitPrice: product.selling_price || product.untaxed_price || 0,
+        quantity: 1,
+        image: product.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'
+      };
+      setEditCartItems(prev => [...prev, newItem]);
+    }
+  };
+
+  // Save edited receipt
+  const saveEditedReceipt = async () => {
+    if (editCartItems.length === 0) {
+      setError("Cart is empty. Please add items before saving.");
+      return;
+    }
+
+    if (editNotPaidFull && editAmountPaid <= 0) {
+      setError("Please enter the amount paid.");
+      return;
+    }
+
+    if (editNotPaidFull && editAmountPaid > editTotal) {
+      setError("Amount paid cannot be greater than total amount.");
+      return;
+    }
+
+    if (editNotPaidFull && !editSelectedCustomer) {
+      setError("Please select a customer for partial payment.");
+      return;
+    }
+    
+    setEditProcessing(true);
+    setError("");
+
+    try {
+      console.log("Starting receipt edit for", editCartItems.length, "items");
+      
+      // Prepare sale creators for the receipt
+      const saleCreators = editCartItems.map(item => {
+        const product = products.find(p => p.product_id === item.product_id);
+        return {
+          number: item.quantity,
+          qr_code: product?.qr_code || "2510" // Use actual QR code from product
+        };
+      });
+
+      // Create receipt data with conditional fields based on payment status
+      const receiptData = {
+        receipt_id: editingReceipt.id,
+        sale_creators: saleCreators,
+        total: Math.round(editTotal * 100), // Convert to cents
+        ...(editNotPaidFull && {
+          customer_id: editSelectedCustomer,
+          unpaid: Math.round(editRemainingAmount * 100) // Convert to cents
+        })
+      };
+
+      console.log("Editing receipt with data:", receiptData);
+      const receiptResponse = await receiptAPI.editReceipt(receiptData);
+
+      console.log("Receipt edited successfully:", receiptResponse);
+
+      // Refresh receipts list
+      await fetchReceipts();
+
+      // Close edit modal
+      setShowEditModal(false);
+      setEditingReceipt(null);
+      setEditCartItems([]);
+      setEditSelectedCustomer('');
+      setEditNotPaidFull(false);
+      setEditAmountPaid(0);
+
+    } catch (err) {
+      console.error("Failed to edit receipt:", err);
+      setError('Unable to edit receipt. Please try again.');
+    } finally {
+      setEditProcessing(false);
+    }
   };
 
   if (loading) {
@@ -566,6 +752,13 @@ export default function Receipts() {
                     <i className="fa-solid fa-eye"></i>
                   </button>
                   <button
+                    onClick={() => editReceipt(receipt)}
+                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                    title="Edit Receipt"
+                  >
+                    <i className="fa-solid fa-edit"></i>
+                  </button>
+                  <button
                     onClick={() => handlePrintReceipt(receipt)}
                     className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     title="Print Receipt"
@@ -685,6 +878,178 @@ export default function Receipts() {
               </PrimaryButton>
               <PrimaryButton onClick={() => handleDownloadReceipt(selectedReceipt)} className="flex-1">
                 <i className="fa-solid fa-download mr-2"></i> Download PDF
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Edit Receipt Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
+        {editingReceipt && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold text-text-primary">Edit Receipt</h3>
+                <p className="text-sm text-text-secondary">Receipt #{editingReceipt.invoice}</p>
+              </div>
+              <button 
+                onClick={() => setShowEditModal(false)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <i className="fa-solid fa-times fa-lg" />
+              </button>
+            </div>
+
+            {/* Products Section */}
+            <div className="bg-white rounded-lg border border-border-light">
+              <div className="p-4 border-b border-border-light">
+                <h4 className="font-semibold text-text-primary">Products</h4>
+              </div>
+              
+              {/* Add Product */}
+              <div className="p-4 border-b border-border-light">
+                <SelectField
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const product = products.find(p => p.product_id === e.target.value);
+                      if (product) {
+                        addToEditCart(product);
+                      }
+                    }
+                  }}
+                  options={[
+                    { value: '', label: 'Add a product...' },
+                    ...products.map(product => ({
+                      value: product.product_id,
+                      label: `${product.name} - RWF ${product.selling_price || product.untaxed_price || 0}`
+                    }))
+                  ]}
+                  searchable={true}
+                  searchPlaceholder="Search products..."
+                  className="w-full"
+                />
+              </div>
+
+              {/* Cart Items */}
+              <div className="max-h-64 overflow-y-auto">
+                {editCartItems.length === 0 ? (
+                  <div className="p-8 text-center text-text-secondary">
+                    <i className="fa-solid fa-shopping-cart text-3xl mb-2 text-gray-300"></i>
+                    <p>No items</p>
+                  </div>
+                ) : (
+                  editCartItems.map((item) => (
+                    <ProductListItem
+                      key={item.product_id}
+                      image={item.image}
+                      name={item.name}
+                      sku={item.product_id}
+                      quantity={item.quantity}
+                      unitPrice={item.unitPrice}
+                      onQuantityChange={(newQuantity) => updateEditQuantity(item.product_id, newQuantity)}
+                      onRemove={() => removeEditItem(item.product_id)}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Payment Section */}
+            <div className="bg-white rounded-lg border border-border-light p-4">
+              <h4 className="font-semibold text-text-primary mb-4">Payment Details</h4>
+              
+              <div className="space-y-4">
+                {/* Customer */}
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-2">Customer</label>
+                  <SelectField
+                    value={editSelectedCustomer}
+                    onChange={(e) => setEditSelectedCustomer(e.target.value)}
+                    options={[
+                      { value: '', label: 'No Customer' },
+                      ...customers.map(customer => ({
+                        value: customer.customer_id || customer.id,
+                        label: `${customer.name}`
+                      }))
+                    ]}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Partial Payment */}
+                <div>
+                  <label className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      checked={editNotPaidFull}
+                      onChange={(e) => setEditNotPaidFull(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium text-text-primary">Partial Payment</span>
+                  </label>
+
+                  {editNotPaidFull && (
+                    <FormField
+                      label="Amount Paid (RWF)"
+                      type="number"
+                      value={editAmountPaid}
+                      onChange={(e) => setEditAmountPaid(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter amount paid"
+                    />
+                  )}
+                </div>
+
+                {/* Totals */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-text-secondary">Subtotal</span>
+                      <span className="font-medium">{formatCurrency(editSubtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Total</span>
+                      <span className="text-green-600">{formatCurrency(editTotal)}</span>
+                    </div>
+                    {editNotPaidFull && (
+                      <>
+                        <div className="flex justify-between text-sm text-orange-600">
+                          <span>Amount Paid</span>
+                          <span className="font-medium">{formatCurrency(editAmountPaid)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-orange-600">
+                          <span>Remaining</span>
+                          <span className="font-medium">{formatCurrency(editRemainingAmount)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <SecondaryButton onClick={() => setShowEditModal(false)} className="flex-1">
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton 
+                onClick={saveEditedReceipt} 
+                disabled={editProcessing || editCartItems.length === 0}
+                className="flex-1"
+              >
+                {editProcessing ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-save mr-2"></i>
+                    Save Changes
+                  </>
+                )}
               </PrimaryButton>
             </div>
           </div>

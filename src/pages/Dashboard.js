@@ -273,7 +273,7 @@ export default function Dashboard() {
     try {
       // Prepare chart data for export
       const chartsData = [
-        {
+  /*       {
           title: 'Monthly Sales Chart',
           type: 'area',
           data: dashboardData.receipts.map(receipt => ({
@@ -290,7 +290,7 @@ export default function Dashboard() {
           title: 'Top Selling Products Chart',
           type: 'bar',
           data: calculateTopSellingProducts(dashboardData.receipts, dashboardData.sales)
-        }
+        } */
       ];
 
       // Add summary statistics with enhanced data
