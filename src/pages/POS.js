@@ -257,10 +257,10 @@ export default function POS() {
       // Create receipt with conditional fields based on payment status
       const receiptData = {
         sale_creators: saleCreators,
-        total: Math.round(total * 100), // Convert to cents
+        total: Math.round(total * 100), 
         ...(notPaidFull && {
           customer_id: selectedCustomer,
-          unpaid: Math.round(remainingAmount * 100) // Convert to cents
+          unpaid: remainingAmount 
         })
       };
 
