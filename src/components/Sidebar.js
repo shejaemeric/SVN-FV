@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const NavIcon = ({ to, iconClass, active, label, expanded, onClick }) => (
   <Link
@@ -26,7 +26,17 @@ const NavIcon = ({ to, iconClass, active, label, expanded, onClick }) => (
 
 export default function Sidebar() {
   const location = useLocation();
-  const [expanded, setExpanded] = useState(false);
+  
+  // Initialize expanded state from localStorage, default to false
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      const savedState = localStorage.getItem('sidebar-expanded');
+      return savedState ? JSON.parse(savedState) : false;
+    } catch (error) {
+      console.warn('Failed to load sidebar state from localStorage:', error);
+      return false;
+    }
+  });
   
   const isDashboard = location.pathname.startsWith('/dashboard');
   const isAddBatch = location.pathname.startsWith('/batches');
@@ -36,6 +46,15 @@ export default function Sidebar() {
   const isSuppliers = location.pathname.startsWith('/suppliers');
   const isSales = location.pathname.startsWith('/sales');
   const isCustomers = location.pathname.startsWith('/customers');
+
+  // Save expanded state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar-expanded', JSON.stringify(expanded));
+    } catch (error) {
+      console.warn('Failed to save sidebar state to localStorage:', error);
+    }
+  }, [expanded]);
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -125,11 +144,17 @@ export default function Sidebar() {
       <div className={`flex items-center gap-3 ${expanded ? 'w-full justify-between' : 'flex-col'}`}>
         <button 
           onClick={toggleExpanded}
-          className={`p-2 rounded-lg text-gray-500 hover:bg-sky-100 hover:text-sky-600 transition-all duration-300 cursor-pointer ${expanded ? 'w-full justify-start' : ''}`}
+          className={`p-2 rounded-lg text-gray-500 hover:bg-sky-100 hover:text-sky-600 transition-all duration-300 cursor-pointer group ${expanded ? 'w-full justify-start' : ''}`}
           title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
         >
-          <i className={`fa-solid ${expanded ? 'fa-angle-left' : 'fa-angle-right'}`} />
+          <i className={`fa-solid ${expanded ? 'fa-angle-left' : 'fa-angle-right'} transition-transform duration-200`} />
           {expanded && <span className="ml-2 text-sm">Collapse</span>}
+          {!expanded && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 top-1/2 transform -translate-y-1/2">
+              {expanded ? 'Collapse' : 'Expand'}
+              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-800"></div>
+            </div>
+          )}
         </button>
         
         <div className={`flex items-center gap-3 ${expanded ? 'w-full' : 'flex-col'}`}>
