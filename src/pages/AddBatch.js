@@ -393,10 +393,11 @@ export default function AddBatch() {
                     id="latest_tax"
                     label="Tax Rate (%)"
                     placeholder="Enter tax rate"
-                    value={latestTax}
+                    value={0}
                     onChange={(e) => setLatestTax(e.target.value)}
                     required={true}
                     min={0}
+                    disabled={true}
                     step="1"
                   />
                 </div>
