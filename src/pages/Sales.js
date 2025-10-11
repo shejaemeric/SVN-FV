@@ -134,7 +134,8 @@ export default function Sales() {
     if (!selectedSale) return;
 
     try {
-      await salesAPI.deleteSale(selectedSale.sale_id);
+      // Use 'id' field from FoundSale structure
+      await salesAPI.deleteSale(selectedSale.id || selectedSale.sale_id);
       setShowDeleteModal(false);
       setSelectedSale(null);
       setError('');
@@ -223,49 +224,60 @@ export default function Sales() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-status-green to-status-green/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm">Total Sales</p>
-                <p className="text-2xl font-bold">{formatNumberWithCommas(sales.length)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-full -mr-12 -mt-12"></div>
+            <div className="relative p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-chart-line text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Sales</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-chart-line text-xl"></i>
-              </div>
+                <p className="text-3xl font-semibold text-gray-700">{formatNumberWithCommas(sales.length)}</p>
+                <p className="text-xs text-blue-600 font-medium mt-2">Transactions</p>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-brand-blue to-brand-blue/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">Total Revenue</p>
-                <p className="text-2xl font-bold">{formatCurrency(sales.reduce((sum, s) => sum + calculateTotalValue(s.number, s.unit_price), 0))}</p>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-emerald-100">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 rounded-full -mr-12 -mt-12"></div>
+            <div className="relative p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-money-bill-wave text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Revenue</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-money-bill-wave text-xl"></i>
-              </div>
+                <p className="text-3xl font-semibold text-gray-700">{formatCurrency(sales.reduce((sum, s) => sum + calculateTotalValue(s.number, s.unit_price), 0))}</p>
+                <p className="text-xs text-emerald-600 font-medium mt-2">Total earned</p>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-status-yellow to-status-yellow/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-100 text-sm">Today's Sales</p>
-                <p className="text-2xl font-bold">{formatNumberWithCommas(sales.filter(s => s.created_at && s.created_at.startsWith(new Date().toISOString().split('T')[0])).length)}</p>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-indigo-100">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 rounded-full -mr-12 -mt-12"></div>
+            <div className="relative p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-calendar-day text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Today's Sales</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-calendar-day text-xl"></i>
-              </div>
+                <p className="text-3xl font-semibold text-gray-700">{formatNumberWithCommas(sales.filter(s => s.created_at && s.created_at.startsWith(new Date().toISOString().split('T')[0])).length)}</p>
+                <p className="text-xs text-indigo-600 font-medium mt-2">Sales today</p>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-brand-purple to-brand-purple/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">Avg Sale Value</p>
-                <p className="text-2xl font-bold">{formatCurrency(sales.length > 0 ? sales.reduce((sum, s) => sum + calculateTotalValue(s.number, s.unit_price), 0) / sales.length : 0)}</p>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-full -mr-12 -mt-12"></div>
+            <div className="relative p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-calculator text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Avg Sale Value</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-calculator text-xl"></i>
-              </div>
+                <p className="text-3xl font-semibold text-gray-700">{formatCurrency(sales.length > 0 ? sales.reduce((sum, s) => sum + calculateTotalValue(s.number, s.unit_price), 0) / sales.length : 0)}</p>
+                <p className="text-xs text-purple-600 font-medium mt-2">Per transaction</p>
             </div>
           </div>
         </div>
@@ -334,14 +346,14 @@ export default function Sales() {
         </div>
 
         {/* Sales Table */}
-        <section className="flex-1 flex flex-col bg-card-bg rounded-xl shadow-lg overflow-hidden">
-          <div className="grid grid-cols-10 gap-4 px-6 py-4 bg-gradient-to-r from-status-green/5 to-status-green/10 border-b border-border-light">
-            <span className="col-span-2 font-semibold text-text-secondary">Date</span>
-            <span className="col-span-3 font-semibold text-text-secondary">Product</span>
-            <span className="col-span-1 font-semibold text-text-secondary text-center">Qty</span>
-            <span className="col-span-1 font-semibold text-text-secondary text-right">Unit Price</span>
-            <span className="col-span-2 font-semibold text-text-secondary text-right">Total Value</span>
-            <span className="col-span-1 font-semibold text-text-secondary text-center">Actions</span>
+        <section className="flex-1 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+          <div className="grid grid-cols-10 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+            <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date</span>
+            <span className="col-span-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Product</span>
+            <span className="col-span-1 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Qty</span>
+            <span className="col-span-1 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Unit Price</span>
+            <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Total Value</span>
+            <span className="col-span-1 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Actions</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredAndSortedSales.length === 0 ? (
@@ -352,44 +364,44 @@ export default function Sales() {
               </div>
             ) : (
               filteredAndSortedSales.map((sale) => (
-                <div key={sale.sale_id} className="grid grid-cols-10 gap-4 items-center px-6 py-4 border-b border-border-light hover:bg-light-bg transition-colors">
+                <div key={sale.sale_id} className="grid grid-cols-10 gap-4 items-center px-6 py-4 border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
                   {/* Date */}
                   <div className="col-span-2">
-                    <p className="font-medium text-text-primary">{formatDate(sale.created_at)}</p>
-                    <p className="text-sm text-text-secondary">ID: {sale.sale_id?.substring(0, 8)}...</p>
+                    <p className="font-semibold text-gray-700">{formatDate(sale.created_at)}</p>
+                    <p className="text-xs text-gray-500 font-mono">ID: {sale.sale_id?.substring(0, 8)}...</p>
                   </div>
 
                   {/* Product */}
                   <div className="col-span-3">
-                    <p className="font-medium text-text-primary">{sale.product_name || 'Unknown Product'}</p>
-                    <p className="text-sm text-text-secondary">ID: {sale.product_id?.substring(0, 8)}...</p>
+                    <p className="font-semibold text-gray-700">{sale.product_name || 'Unknown Product'}</p>
+                    <p className="text-xs text-gray-500 font-mono">ID: {sale.product_id?.substring(0, 8)}...</p>
                     {sale.customer_name && (
-                      <p className="text-xs text-text-secondary">Customer: {sale.customer_name}</p>
+                      <p className="text-xs text-gray-400">Customer: {sale.customer_name}</p>
                     )}
                   </div>
 
                   {/* Quantity */}
                   <div className="col-span-1 text-center">
-                    <span className="font-semibold text-text-primary">
+                    <span className="font-semibold text-sm text-gray-700">
                       {formatNumberWithCommas(sale.number || 0)}
                     </span>
                   </div>
 
                   {/* Unit Price */}
                   <div className="col-span-1 text-right">
-                    <p className="font-medium text-text-primary">{formatCurrency(sale.unit_price)}</p>
+                    <p className="font-semibold text-gray-600">{formatCurrency(sale.unit_price)}</p>
                   </div>
 
                   {/* Total Value */}
                   <div className="col-span-2 text-right">
-                    <p className="font-bold text-text-primary">{formatCurrency(calculateTotalValue(sale.number, sale.unit_price))}</p>
+                    <p className="font-semibold text-lg text-emerald-700">{formatCurrency(calculateTotalValue(sale.number, sale.unit_price))}</p>
                   </div>
 
                   {/* Actions */}
-                  <div className="col-span-1 flex items-center justify-center gap-1">
+                  <div className="col-span-1 flex items-center justify-center">
                     <button
                       onClick={() => openDeleteModal(sale)}
-                      className="p-2 text-status-red hover:bg-status-red/10 rounded-lg transition-colors"
+                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105"
                       title="Delete Sale"
                     >
                       <i className="fa-solid fa-trash"></i>

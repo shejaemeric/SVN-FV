@@ -10,6 +10,7 @@ import ErrorToast from '../components/ErrorToast';
 import { receiptAPI, productAPI, customerAPI } from '../services/api';
 import { downloadReceiptPDF, printReceipt, downloadReceiptsSummaryPDF, downloadReceiptsCSV } from '../utils/receiptUtils';
 import { formatCurrencyWhole, formatNumberWithCommas } from '../utils/numberUtils';
+import { DEFAULT_PRODUCT_IMAGE } from '../utils/imageUtils';
 
 export default function Receipts() {
   const [receipts, setReceipts] = useState([]);
@@ -27,6 +28,7 @@ export default function Receipts() {
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingReceipt, setEditingReceipt] = useState(null);
   const [editCartItems, setEditCartItems] = useState([]);
   const [editSelectedCustomer, setEditSelectedCustomer] = useState('');
@@ -124,7 +126,7 @@ export default function Receipts() {
       // Calculate proper totals from sales data
       const sales = receipt.sales || [];
       const subtotal = sales.reduce((sum, sale) => sum + ((sale.number || 0) * (sale.unit_price || 0)), 0);
-      const taxRate = 0.18; // 18% tax rate
+      const taxRate = 0; // 0% tax rate
       const taxes = Math.round(subtotal * taxRate);
       const total = subtotal + taxes;
       
@@ -345,7 +347,7 @@ export default function Receipts() {
         name: item.name,
         unitPrice: item.unitPrice || 0, // unitPrice is already a number
         quantity: item.qty || 0,
-        image: product?.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'
+        image: product?.image_path || DEFAULT_PRODUCT_IMAGE
       };
     });
     
@@ -403,10 +405,31 @@ export default function Receipts() {
         name: product.name,
         unitPrice: product.selling_price || product.untaxed_price || 0,
         quantity: 1,
-        image: product.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'
+        image: product.image_path || DEFAULT_PRODUCT_IMAGE
       };
       setEditCartItems(prev => [...prev, newItem]);
     }
+  };
+
+  // Delete receipt
+  const handleDeleteReceipt = async () => {
+    if (!selectedReceipt) return;
+
+    try {
+      await receiptAPI.deleteReceipt(selectedReceipt.id);
+      setShowDeleteModal(false);
+      setSelectedReceipt(null);
+      setError('');
+      await fetchReceipts();
+    } catch (err) {
+      console.error('Failed to delete receipt:', err);
+      setError('Failed to delete receipt. Please try again.');
+    }
+  };
+
+  const openDeleteModal = (receipt) => {
+    setSelectedReceipt(receipt);
+    setShowDeleteModal(true);
   };
 
   // Save edited receipt
@@ -450,10 +473,9 @@ export default function Receipts() {
       const receiptData = {
         receipt_id: editingReceipt.id,
         sale_creators: saleCreators,
-        total: Math.round(editTotal * 100), // Convert to cents
-        ...(editNotPaidFull && {
+        ...(editNotPaidFull && editSelectedCustomer && {
           customer_id: editSelectedCustomer,
-          unpaid: Math.round(editRemainingAmount * 100) // Convert to cents
+          unpaid: Math.round(editRemainingAmount)
         })
       };
 
@@ -500,7 +522,7 @@ export default function Receipts() {
       <ErrorToast error={error} onClose={() => setError('')} />
       <PageLayout mainId="sales-history-page" mainClassName="flex flex-col overflow-hidden">
       <Header
-        title="Sales History"
+        title="Reciepts History"
         subtitle={`${summaryStats.totalTransactions} transactions - ${summaryStats.totalSales} total sales`}
         right={
           <div className="flex items-center gap-3">
@@ -543,49 +565,60 @@ export default function Receipts() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Total Sales</p>
-              <p className="text-2xl font-bold">{summaryStats.totalSales}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-emerald-100">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 rounded-full -mr-12 -mt-12"></div>
+          <div className="relative p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <i className="fa-solid fa-chart-line text-white text-xl"></i>
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Sales</p>
             </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <i className="fa-solid fa-chart-line text-xl"></i>
-            </div>
+            <p className="text-3xl font-semibold text-gray-700">{summaryStats.totalSales}</p>
+            <p className="text-xs text-emerald-600 font-medium mt-2">Revenue earned</p>
           </div>
         </div>
-        <div className="bg-gradient-to-r from-sky-500 to-sky-600 p-4 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sky-100 text-sm">Transactions</p>
-              <p className="text-2xl font-bold">{summaryStats.totalTransactions}</p>
+        
+        <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-full -mr-12 -mt-12"></div>
+          <div className="relative p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <i className="fa-solid fa-receipt text-white text-xl"></i>
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transactions</p>
             </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <i className="fa-solid fa-receipt text-xl"></i>
-            </div>
+            <p className="text-3xl font-semibold text-gray-700">{summaryStats.totalTransactions}</p>
+            <p className="text-xs text-blue-600 font-medium mt-2">Receipts issued</p>
           </div>
         </div>
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">Average Order</p>
-              <p className="text-2xl font-bold">{summaryStats.averageOrder}</p>
+        
+        <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-full -mr-12 -mt-12"></div>
+          <div className="relative p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <i className="fa-solid fa-calculator text-white text-xl"></i>
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Average Order</p>
             </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <i className="fa-solid fa-calculator text-xl"></i>
-            </div>
+            <p className="text-3xl font-semibold text-gray-700">{summaryStats.averageOrder}</p>
+            <p className="text-xs text-purple-600 font-medium mt-2">Per receipt</p>
           </div>
         </div>
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4 rounded-xl shadow-lg text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm">Cash Sales</p>
-              <p className="text-2xl font-bold">{summaryStats.cashSales}</p>
+        
+        <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-indigo-100">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 rounded-full -mr-12 -mt-12"></div>
+          <div className="relative p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <i className="fa-solid fa-money-bill-wave text-white text-xl"></i>
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cash Sales</p>
             </div>
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-              <i className="fa-solid fa-money-bill-wave text-xl"></i>
-            </div>
+            <p className="text-3xl font-semibold text-gray-700">{summaryStats.cashSales}</p>
+            <p className="text-xs text-indigo-600 font-medium mt-2">Paid in full</p>
           </div>
         </div>
       </div>
@@ -692,13 +725,13 @@ export default function Receipts() {
       </div>
 
       {/* Enhanced Sales Table */}
-      <section id="sales-table-container" className="flex-1 flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
-        <div id="sales-table-header" className="grid grid-cols-10 gap-4 px-6 py-4 bg-gradient-to-r from-sky-50 to-cyan-50 border-b border-border-light">
-          <span className="col-span-2 font-semibold text-text-secondary">Date & Time</span>
-          <span className="col-span-2 font-semibold text-text-secondary">Receipt ID</span>
-          <span className="col-span-2 font-semibold text-text-secondary text-right">Total Amount</span>
-          <span className="col-span-2 font-semibold text-text-secondary">Items</span>
-          <span className="col-span-2 font-semibold text-text-secondary text-center">Actions</span>
+      <section id="sales-table-container" className="flex-1 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+        <div id="sales-table-header" className="grid grid-cols-10 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+          <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date & Time</span>
+          <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Receipt ID</span>
+          <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Total Amount</span>
+          <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Items</span>
+          <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Actions</span>
         </div>
         <div id="sales-table-body" className="flex-1 overflow-y-auto">
           {filteredAndSorted.length === 0 ? (
@@ -709,17 +742,17 @@ export default function Receipts() {
             </div>
           ) : (
             filteredAndSorted.map((receipt) => (
-              <div key={receipt.id} className="grid grid-cols-10 gap-4 items-center px-6 py-4 border-b border-border-light hover:bg-gray-50 transition-colors">
+              <div key={receipt.id} className="grid grid-cols-10 gap-4 items-center px-6 py-4 border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
                 {/* Date & Time */}
                 <div className="col-span-2">
-                  <p className="font-medium text-text-primary">{receipt.date}</p>
-                  <p className="text-sm text-text-secondary">{receipt.time}</p>
+                  <p className="font-semibold text-gray-700">{receipt.date}</p>
+                  <p className="text-xs text-gray-500">{receipt.time}</p>
                 </div>
 
                 {/* Receipt ID */}
                 <div className="col-span-2">
                   <p 
-                    className="font-mono text-text-primary font-medium cursor-help" 
+                    className="font-mono text-gray-600 font-semibold cursor-help" 
                     title={`Full ID: ${receipt.invoice}`}
                   >
                     #{receipt.invoice.substring(0, 8)}...
@@ -728,49 +761,56 @@ export default function Receipts() {
 
                 {/* Total Amount */}
                 <div className="col-span-2 text-right">
-                  <p className="font-bold text-lg text-text-primary">{receipt.total}</p>
+                  <p className="font-semibold text-lg text-emerald-700">{receipt.total}</p>
                 </div>
 
                 {/* Items */}
                 <div className="col-span-2">
-                  <div className="text-sm text-text-secondary">
+                  <div className="text-sm text-gray-600 font-medium">
                     {receipt.items.length} item{receipt.items.length !== 1 ? 's' : ''}
                   </div>
-                  <div className="text-xs text-text-secondary truncate">
+                  <div className="text-xs text-gray-500 truncate">
                     {receipt.items.slice(0, 2).map(item => item.name).join(', ')}
                     {receipt.items.length > 2 && '...'}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="col-span-2 flex items-center justify-center gap-2">
+                <div className="col-span-2 flex items-center justify-center gap-1.5">
                   <button
                     onClick={() => viewReceipt(receipt)}
-                    className="p-2 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
+                    className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all hover:scale-105"
                     title="View Details"
                   >
                     <i className="fa-solid fa-eye"></i>
                   </button>
                   <button
                     onClick={() => editReceipt(receipt)}
-                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all hover:scale-105"
                     title="Edit Receipt"
                   >
                     <i className="fa-solid fa-edit"></i>
                   </button>
                   <button
                     onClick={() => handlePrintReceipt(receipt)}
-                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all hover:scale-105"
                     title="Print Receipt"
                   >
                     <i className="fa-solid fa-print"></i>
                   </button>
                   <button
                     onClick={() => handleDownloadReceipt(receipt)}
-                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all hover:scale-105"
                     title="Download PDF"
                   >
                     <i className="fa-solid fa-download"></i>
+                  </button>
+                  <button
+                    onClick={() => openDeleteModal(receipt)}
+                    className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105"
+                    title="Delete Receipt"
+                  >
+                    <i className="fa-solid fa-trash"></i>
                   </button>
                 </div>
               </div>
@@ -839,14 +879,14 @@ export default function Receipts() {
             {/* Totals */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+{/*                 <div className="flex justify-between items-center">
                   <span className="text-text-secondary">Subtotal</span>
                   <span className="font-medium">{formatCurrency(selectedReceipt.subtotal || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center">
+                </div> */}
+{/*                 <div className="flex justify-between items-center">
                   <span className="text-text-secondary">Tax (18%)</span>
                   <span className="font-medium">{formatCurrency(selectedReceipt.taxes || 0)}</span>
-                </div>
+                </div> */}
                 <div className="border-t border-border-light pt-2">
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>Total</span>
@@ -923,7 +963,7 @@ export default function Receipts() {
                     { value: '', label: 'Add a product...' },
                     ...products.map(product => ({
                       value: product.product_id,
-                      label: `${product.name} - RWF ${product.selling_price || product.untaxed_price || 0}`
+                      label: `${product.name} - RWF ${product.selling_price}`
                     }))
                   ]}
                   searchable={true}
@@ -995,7 +1035,7 @@ export default function Receipts() {
                       label="Amount Paid (RWF)"
                       type="number"
                       value={editAmountPaid}
-                      onChange={(e) => setEditAmountPaid(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setEditAmountPaid(parseFloat(e.target.value) || null)}
                       placeholder="Enter amount paid"
                     />
                   )}
@@ -1054,6 +1094,48 @@ export default function Receipts() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Delete Receipt Confirmation Modal */}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+        <div className="space-y-6 max-w-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-2xl font-bold text-text-primary">Delete Receipt</h3>
+              <p className="text-text-secondary">This action cannot be undone</p>
+            </div>
+            <button 
+              onClick={() => setShowDeleteModal(false)} 
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <i className="fa-solid fa-times fa-lg" />
+            </button>
+          </div>
+
+          <div className="bg-status-red/10 border border-status-red/20 rounded-lg p-4">
+            <p className="text-status-red text-sm">
+              <i className="fa-solid fa-exclamation-triangle mr-2"></i>
+              Are you sure you want to delete this receipt? This will permanently remove the receipt and all associated sales from the system.
+            </p>
+          </div>
+
+          {selectedReceipt && (
+            <div className="bg-light-bg p-4 rounded-lg">
+              <p className="font-medium text-text-primary">Receipt #{selectedReceipt.invoice}</p>
+              <p className="text-sm text-text-secondary">Date: {selectedReceipt.date} {selectedReceipt.time}</p>
+              <p className="text-sm text-text-secondary">Total: {selectedReceipt.total}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <SecondaryButton onClick={() => setShowDeleteModal(false)} className="flex-1">
+              Cancel
+            </SecondaryButton>
+            <PrimaryButton onClick={handleDeleteReceipt} className="flex-1 bg-status-red hover:bg-status-red/90">
+              <i className="fa-solid fa-trash mr-2"></i> Delete Receipt
+            </PrimaryButton>
+          </div>
+        </div>
       </Modal>
       </PageLayout>
     </>

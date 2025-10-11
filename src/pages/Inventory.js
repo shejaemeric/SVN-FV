@@ -8,8 +8,9 @@ import FormField from '../components/FormField';
 import SelectField from '../components/SelectField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import NotificationToast from '../components/ErrorToast';
-import { productAPI } from '../services/api';
+import { productAPI, stockAPI } from '../services/api';
 import { exportTableToPDF, getTableColumns } from '../utils/exportUtils';
+import { formatCurrencyWhole, formatNumberWithCommas } from '../utils/numberUtils';
 
 export default function Inventory() {
   const [query, setQuery] = useState('');
@@ -26,6 +27,8 @@ export default function Inventory() {
   const [createProduct, setCreateProduct] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showStatusSettings, setShowStatusSettings] = useState(false);
+  const [showStockBatchesModal, setShowStockBatchesModal] = useState(false);
+  const [productStockBatches, setProductStockBatches] = useState([]);
 
   // Status management settings
   const [statusSettings, setStatusSettings] = useState({
@@ -245,6 +248,28 @@ export default function Inventory() {
 
   const openDeleteConfirm = (product) => {
     setDeleteConfirm(product);
+  };
+
+  const handleViewStockBatches = async (product) => {
+    try {
+      setInfo('Loading stock batches...');
+      const stockBatches = await stockAPI.getProductStock(product.qr_code);
+      setProductStockBatches(Array.isArray(stockBatches) ? stockBatches : []);
+      setShowStockBatchesModal(true);
+      setInfo('');
+    } catch (err) {
+      console.error('Failed to fetch stock batches:', err);
+      setError('Failed to load stock batches for this product.');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   const filteredAndSortedProducts = useMemo(() => {
@@ -482,7 +507,15 @@ export default function Inventory() {
           <div>
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-4">
-                <img className="w-20 h-20 rounded-xl object-cover" src={viewProduct.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'} alt={viewProduct.name} />
+                <img 
+                  className="w-20 h-20 rounded-xl object-cover" 
+                  src={viewProduct.image_path || 'https://marketing-wala.com/wp-content/uploads/2024/08/4863042.webp'} 
+                  alt={viewProduct.name} 
+                  onError={(e) => {
+                    e.target.src = 'https://marketing-wala.com/wp-content/uploads/2024/08/4863042.webp';
+                    e.target.onerror = null;
+                  }}
+                />
                 <div>
                   <h2 className="text-2xl font-bold text-text-primary">{viewProduct.name}</h2>
                   <p className="text-text-secondary">ID: {viewProduct.product_id}</p>
@@ -514,17 +547,86 @@ export default function Inventory() {
               </div>
             </div>
 
-            <button 
-              onClick={() => {
-                setViewProduct(null);
-                openEditModal(viewProduct);
-              }}
-              className="mt-6 w-full py-3 bg-sky-600 text-white font-bold rounded-xl shadow-lg hover:bg-sky-600 transition-all"
-            >
-              <i className="fa-solid fa-edit mr-2" /> Edit Product
-            </button>
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={() => handleViewStockBatches(viewProduct)}
+                className="flex-1 py-3 bg-brand-purple text-white font-bold rounded-xl shadow-lg hover:bg-brand-purple/90 transition-all"
+              >
+                <i className="fa-solid fa-warehouse mr-2" /> View Stock Batches
+              </button>
+              <button 
+                onClick={() => {
+                  setViewProduct(null);
+                  openEditModal(viewProduct);
+                }}
+                className="flex-1 py-3 bg-sky-600 text-white font-bold rounded-xl shadow-lg hover:bg-sky-600 transition-all"
+              >
+                <i className="fa-solid fa-edit mr-2" /> Edit Product
+              </button>
+            </div>
           </div>
         )}
+      </Modal>
+
+      {/* Stock Batches Modal */}
+      <Modal isOpen={showStockBatchesModal} onClose={() => setShowStockBatchesModal(false)}>
+        <div className="space-y-4 max-w-4xl">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-semibold text-text-primary">Stock Batches</h3>
+              <p className="text-text-secondary">Available stock batches for this product</p>
+            </div>
+            <button onClick={() => setShowStockBatchesModal(false)} className="text-gray-400 hover:text-gray-600">
+              <i className="fa-solid fa-times fa-lg" />
+            </button>
+          </div>
+
+          {productStockBatches.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary">
+              <i className="fa-solid fa-box-open text-4xl mb-4 text-gray-300"></i>
+              <p>No stock batches found for this product</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {productStockBatches.map((batch) => (
+                <div key={batch.id} className="bg-light-bg p-4 rounded-lg border border-border-light">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-text-secondary">Batch ID</p>
+                      <p className="font-medium text-text-primary font-mono">{batch.manufacturer_batch_id || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-secondary">Quantity</p>
+                      <p className="font-medium text-text-primary">{formatNumberWithCommas(batch.number || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-secondary">Buying Price</p>
+                      <p className="font-medium text-text-primary">{formatCurrencyWhole(batch.buying_price || 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-secondary">Tax</p>
+                      <p className="font-medium text-text-primary">{batch.tax || 0}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-secondary">Expiry Date</p>
+                      <p className="font-medium text-text-primary">{formatDate(batch.expiry_date)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-text-secondary">Added Date</p>
+                      <p className="font-medium text-text-primary">{formatDate(batch.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <SecondaryButton onClick={() => setShowStockBatchesModal(false)} className="flex-1">
+              Close
+            </SecondaryButton>
+          </div>
+        </div>
       </Modal>
 
       {/* Create Product Modal */}
@@ -546,26 +648,32 @@ export default function Inventory() {
               value={newProduct.qr_code}
               onChange={(e) => setNewProduct({...newProduct, qr_code: e.target.value})}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div>
               <FormField
                 id="new-product-size"
                 label="Size"
                 type="number"
                 placeholder="Size"
                 value={newProduct.size}
-                onChange={(e) => setNewProduct({...newProduct, size: parseInt(e.target.value) || 0})}
+                onChange={(e) => setNewProduct({...newProduct, size: parseInt(e.target.value) || null})}
               />
-              <SelectField
-                id="new-product-unit"
-                value={newProduct.unit}
-                onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
-                options={[
-                  { value: 'g', label: 'Grams (g)' },
-                  { value: 'ml', label: 'Milliliters (ml)' }
-                ]}
-                placeholder="Select unit..."
-              />
+
             </div>
+            <div >
+                <label className="block text-sm font-medium text-text-primary mb-2">Unit</label>
+                <SelectField
+                  id="new-product-unit"
+                  value={newProduct.unit}
+                  onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
+                  options={[
+                    { value: 'g', label: 'Grams (g)' },
+                    { value: 'mg', label: 'Milligrams (mg)' },
+                    { value: 'ml', label: 'Milliliters (ml)' },
+                    { value: 'l', label: 'Liters (L)' }
+                  ]}
+                  placeholder="Select unit..."
+                />
+              </div>
             <FormField
               id="new-product-image"
               label="Product Image (Default)"
@@ -618,7 +726,7 @@ export default function Inventory() {
               type="number"
               placeholder="Size"
               value={editForm.size}
-              onChange={(e) => setEditForm({...editForm, size: parseInt(e.target.value) || 0})}
+              onChange={(e) => setEditForm({...editForm, size: parseInt(e.target.value) || null})}
             />
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">Unit</label>
@@ -628,7 +736,9 @@ export default function Inventory() {
                 onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
                 options={[
                   { value: 'g', label: 'Grams (g)' },
-                  { value: 'ml', label: 'Milliliters (ml)' }
+                  { value: 'mg', label: 'Milligrams (mg)' },
+                  { value: 'ml', label: 'Milliliters (ml)' },
+                  { value: 'l', label: 'Liters (L)' }
                 ]}
                 placeholder="Select unit..."
               />
@@ -657,7 +767,7 @@ export default function Inventory() {
               placeholder="e.g., 10"
               value={statusSettings.inStockThreshold}
               onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
+                const value = parseInt(e.target.value) || null;
                 saveStatusSettings({
                   ...statusSettings,
                   inStockThreshold: value
@@ -674,7 +784,7 @@ export default function Inventory() {
               placeholder="e.g., 5"
               value={statusSettings.lowStockThreshold}
               onChange={(e) => {
-                const value = parseInt(e.target.value) || 0;
+                const value = parseInt(e.target.value) || null;
                 saveStatusSettings({
                   ...statusSettings,
                   lowStockThreshold: value

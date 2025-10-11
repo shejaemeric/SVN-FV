@@ -1,3 +1,5 @@
+import { getImageSrc, handleImageError } from '../utils/imageUtils';
+
 export default function ProductListItem({
   image,
   name,
@@ -11,11 +13,14 @@ export default function ProductListItem({
   return (
     <div className="grid grid-cols-12 items-center gap-4 bg-card-bg p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow">
       <div className="col-span-4 flex items-center gap-4">
-{/*         <img className="w-12 h-12 rounded-lg object-cover" src={image} alt={name} />
- */}        <div>
+        <img 
+          className="w-12 h-12 rounded-lg object-cover" 
+          src={getImageSrc(image)} 
+          alt={name} 
+          onError={handleImageError}
+        />
+        <div>
           <h3 className="font-semibold text-text-primary">{name}</h3>
-{/*           <p className="text-sm text-text-secondary">SKU: {sku}</p>
- */}        
         </div>
       </div>
       <div className="col-span-2 flex items-center justify-center gap-2">
@@ -29,7 +34,7 @@ export default function ProductListItem({
       </div>
       <p className="col-span-3 text-right font-medium text-text-primary">RWF {Number(unitPrice).toFixed(0)}</p>
       <div className="col-span-3 flex items-center justify-end gap-3">
-        <p className="font-semibold text-green-600">RWF {Number(total).toFixed(0)}</p>
+        <p className="font-semibold text-sky-700">RWF {Number(total).toFixed(0)}</p>
         <button onClick={onRemove} className="text-gray-400 hover:text-red-500 transition-colors" aria-label={`Remove ${name}`}>
           <i className="fa-solid fa-trash-alt" />
         </button>

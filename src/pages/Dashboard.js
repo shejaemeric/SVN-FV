@@ -373,6 +373,7 @@ export default function Dashboard() {
               iconClass="fa-solid fa-box-open"
               backgroundIconClass="fa-solid fa-boxes-stacked"
               subtitleClass="text-sky-100"
+              subtitle="In inventory"
             />
             <SummaryCard
               title="Low Stock Items"
@@ -382,6 +383,7 @@ export default function Dashboard() {
               iconClass="fa-solid fa-battery-quarter"
               backgroundIconClass="fa-solid fa-exclamation-triangle"
               subtitleClass="text-orange-100"
+              subtitle="Needs restocking"
             />
             <SummaryCard
               title="Today's Sales"
@@ -391,6 +393,7 @@ export default function Dashboard() {
               iconClass="fa-solid fa-cash-register"
               backgroundIconClass="fa-solid fa-dollar-sign"
               subtitleClass="text-teal-100"
+              subtitle="Revenue today"
             />
             <SummaryCard
               title="Monthly Revenue"
@@ -400,6 +403,7 @@ export default function Dashboard() {
               iconClass="fa-solid fa-wallet"
               backgroundIconClass="fa-solid fa-chart-line"
               subtitleClass="text-indigo-100"
+              subtitle="This month"
             />
           </section>
 
@@ -472,11 +476,11 @@ export default function Dashboard() {
           </section>
 
           {/* Bottom Section: Top Products */}
-          <section id="bottom-section" className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-section="bottom-section">
+{/*           <section id="bottom-section" className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-section="bottom-section">
             <ChartCard title="Top Selling Products" className="lg:col-span-3" data-chart="top-products">
               <TopSellingProductsChart receipts={dashboardData.receipts} />
             </ChartCard>
-          </section>
+          </section> */}
         </main>
       </div>
     </>

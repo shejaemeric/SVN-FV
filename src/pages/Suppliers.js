@@ -184,7 +184,8 @@ export default function Suppliers() {
     }
 
     try {
-      await supplierAPI.createSupplier(formData);
+      // API expects plain string for supplier name
+      await supplierAPI.createSupplier(formData.name.trim());
       setShowCreateModal(false);
       setFormData({ name: '', contact_info: '', address: '' });
       setError('');
@@ -414,42 +415,49 @@ export default function Suppliers() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-brand-blue to-brand-blue/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">Total Suppliers</p>
-                <p className="text-2xl font-bold">{formatNumberWithCommas(suppliers.length)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-full -mr-14 -mt-14"></div>
+            <div className="relative p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-truck text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Suppliers</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-truck text-xl"></i>
-              </div>
+              <p className="text-3xl font-semibold text-gray-700">{formatNumberWithCommas(suppliers.length)}</p>
+              <p className="text-xs text-blue-600 font-medium mt-2">Active partnerships</p>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-status-red to-status-red/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-100 text-sm">Total Debt</p>
-                <p className="text-2xl font-bold">{formatCurrency(suppliers.reduce((sum, s) => {
-                  // Try different possible field names for debt
-                  const debt = parseFloat(s.total_owed) || parseFloat(s.debt) || parseFloat(s.outstanding_amount) || parseFloat(s.balance) || 0;
-                  return sum + debt;
-                }, 0))}</p>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-red-100">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-full -mr-14 -mt-14"></div>
+            <div className="relative p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-exclamation-triangle text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Debt</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-exclamation-triangle text-xl"></i>
-              </div>
+              <p className="text-3xl font-semibold text-gray-700">{formatCurrency(suppliers.reduce((sum, s) => {
+                const debt = parseFloat(s.total_owed) || parseFloat(s.debt) || parseFloat(s.outstanding_amount) || parseFloat(s.balance) || 0;
+                return sum + debt;
+              }, 0))}</p>
+              <p className="text-xs text-red-600 font-medium mt-2">Owed to suppliers</p>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-status-yellow to-status-yellow/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-100 text-sm">Total Paid</p>
-                <p className="text-2xl font-bold">{formatCurrency(payments.reduce((sum, p) => sum + (p.amount || 0), 0))}</p>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-emerald-100">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 rounded-full -mr-14 -mt-14"></div>
+            <div className="relative p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                  <i className="fa-solid fa-money-bill-wave text-white text-xl"></i>
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Paid</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-chart-line text-xl"></i>
-              </div>
+              <p className="text-3xl font-semibold text-gray-700">{formatCurrency(payments.reduce((sum, p) => sum + (p.amount || 0), 0))}</p>
+              <p className="text-xs text-emerald-600 font-medium mt-2">Payments made</p>
             </div>
           </div>
         </div>
@@ -543,13 +551,13 @@ export default function Suppliers() {
 
         {/* Suppliers Tab */}
         {activeTab === 'suppliers' && (
-          <section className="flex-1 flex flex-col bg-card-bg rounded-xl shadow-lg overflow-hidden">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 border-b border-border-light">
-              <span className="col-span-4 font-semibold text-text-secondary">Name</span>
-              <span className="col-span-2 font-semibold text-text-secondary text-right">Total Paid</span>
-              <span className="col-span-2 font-semibold text-text-secondary text-right">Debt</span>
-              <span className="col-span-2 font-semibold text-text-secondary">Status</span>
-              <span className="col-span-2 font-semibold text-text-secondary text-center">Actions</span>
+          <section className="flex-1 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+              <span className="col-span-4 font-semibold text-gray-600 text-xs uppercase tracking-wider">Name</span>
+              <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Total Paid</span>
+              <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Debt</span>
+              <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider">Status</span>
+              <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Actions</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               {filteredAndSortedSuppliers.length === 0 ? (
@@ -566,48 +574,49 @@ export default function Suppliers() {
                   const debt = parseFloat(supplier.total_owed) || parseFloat(supplier.debt) || parseFloat(supplier.outstanding_amount) || parseFloat(supplier.balance) || 0;
                   
                   return (
-                    <div key={supplier.supplier_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-border-light hover:bg-light-bg transition-colors">
+                    <div key={supplier.supplier_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
                       {/* Name */}
                       <div className="col-span-4">
-                        <p className="font-medium text-text-primary">{supplier.name}</p>
-                        <p className="text-sm text-text-secondary">ID: {supplier.supplier_id?.substring(0, 8)}...</p>
+                        <p className="font-semibold text-gray-700">{supplier.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">ID: {supplier.supplier_id?.substring(0, 8)}...</p>
                       </div>
 
                       {/* Total Paid */}
                       <div className="col-span-2 text-right">
-                        <p className="font-medium text-status-green">{formatCurrency(totalPaid)}</p>
-                        <p className="text-sm text-text-secondary">{supplierPayments.length} payments</p>
+                        <p className="font-semibold text-lg text-emerald-600">{formatCurrency(totalPaid)}</p>
+                        <p className="text-xs text-gray-500">{supplierPayments.length} payments</p>
                       </div>
 
                       {/* Debt */}
                       <div className="col-span-2 text-right">
-                        <p className={`font-medium ${debt > 0 ? 'text-status-red' : 'text-status-green'}`}>
+                        <p className={`font-semibold text-lg ${debt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                           {formatCurrency(debt)}
                         </p>
-                        <p className="text-sm text-text-secondary">{debt > 0 ? 'Outstanding' : 'Paid'}</p>
+                        <p className="text-xs text-gray-500">{debt > 0 ? 'Outstanding' : 'Paid'}</p>
                       </div>
 
                       {/* Status */}
                       <div className="col-span-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                           supplier.status === 'active' 
-                            ? 'bg-status-green/10 text-status-green' 
-                            : 'bg-status-red/10 text-status-red'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
-                          <i className={`fa-solid fa-circle mr-1 ${supplier.status === 'active' ? 'text-status-green' : 'text-status-red'}`} style={{fontSize: '6px'}}></i>
+                          <i className={`fa-solid fa-circle mr-1 ${supplier.status === 'active' ? 'text-emerald-500' : 'text-rose-500'}`} style={{fontSize: '6px'}}></i>
                           {supplier.status || 'active'}
                         </span>
                       </div>
 
                       {/* Actions */}
-                      <div className="col-span-2 flex items-center justify-center gap-1">
+                      <div className="col-span-2 flex items-center justify-center">
                         <button
                           onClick={() => openPaymentModal(supplier)}
-                          className="p-2 text-status-green hover:bg-status-green/10 rounded-lg transition-colors"
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all hover:scale-105"
                           title="Make Payment"
                         >
                           <i className="fa-solid fa-money-bill-wave"></i>
                         </button>
+                        {/* Edit and Delete not supported by backend API
                         <button
                           onClick={() => openEditModal(supplier)}
                           className="p-2 text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-colors"
@@ -622,6 +631,7 @@ export default function Suppliers() {
                         >
                           <i className="fa-solid fa-trash"></i>
                         </button>
+                        */}
                       </div>
                     </div>
                   );
@@ -633,12 +643,12 @@ export default function Suppliers() {
 
         {/* Payments Tab */}
         {activeTab === 'payments' && (
-          <section className="flex-1 flex flex-col bg-card-bg rounded-xl shadow-lg overflow-hidden">
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-status-green/5 to-status-green/10 border-b border-border-light">
-              <span className="col-span-3 font-semibold text-text-secondary">Supplier</span>
-              <span className="col-span-2 font-semibold text-text-secondary text-right">Amount</span>
-              <span className="col-span-3 font-semibold text-text-secondary">Payment Date</span>
-              <span className="col-span-4 font-semibold text-text-secondary text-center">Actions</span>
+          <section className="flex-1 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+              <span className="col-span-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Supplier</span>
+              <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Amount</span>
+              <span className="col-span-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Payment Date</span>
+              <span className="col-span-4 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Actions</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               {filteredAndSortedPayments.length === 0 ? (
@@ -649,35 +659,35 @@ export default function Suppliers() {
                 </div>
               ) : (
                 filteredAndSortedPayments.map((payment) => (
-                  <div key={payment.payment_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-border-light hover:bg-light-bg transition-colors">
+                  <div key={payment.payment_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
                     {/* Supplier */}
                     <div className="col-span-3">
-                      <p className="font-medium text-text-primary">{payment.supplier_name}</p>
-                      <p className="text-sm text-text-secondary">ID: {payment.supplier_id?.substring(0, 8)}...</p>
+                      <p className="font-semibold text-gray-700">{payment.supplier_name}</p>
+                      <p className="text-xs text-gray-500 font-mono">ID: {payment.supplier_id?.substring(0, 8)}...</p>
                     </div>
 
                     {/* Amount */}
                     <div className="col-span-2 text-right">
-                      <p className="font-semibold text-text-primary">{formatCurrency(payment.amount)}</p>
+                      <p className="font-semibold text-lg text-emerald-600">{formatCurrency(payment.amount)}</p>
                     </div>
 
                     {/* Payment Date */}
                     <div className="col-span-3">
-                      <p className="text-sm text-text-primary">{formatDate(payment.payment_date)}</p>
+                      <p className="text-sm text-gray-600">{formatDate(payment.payment_date)}</p>
                     </div>
 
                     {/* Actions */}
-                    <div className="col-span-4 flex items-center justify-center gap-1">
+                    <div className="col-span-4 flex items-center justify-center gap-2">
                       <button
                         onClick={() => openViewPaymentModal(payment)}
-                        className="p-2 text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-colors"
+                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all hover:scale-105"
                         title="View Details"
                       >
                         <i className="fa-solid fa-eye"></i>
                       </button>
                       <button
                         onClick={() => openEditPaymentModal(payment)}
-                        className="p-2 text-brand-green hover:bg-brand-green/10 rounded-lg transition-colors"
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all hover:scale-105"
                         title="Edit Payment"
                       >
                         <i className="fa-solid fa-edit"></i>

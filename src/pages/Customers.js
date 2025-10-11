@@ -3,7 +3,7 @@ import PageLayout from '../components/PageLayout';
 import Header from '../components/Header';
 import FormField from '../components/FormField';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
-import ErrorToast from '../components/ErrorToast';
+import { ErrorToast } from '../components/ErrorToast';
 import Modal from '../components/Modal';
 import { customerAPI, receiptAPI, handleAPIError } from '../services/api';
 import { formatCurrencyWhole, formatNumberWithCommas } from '../utils/numberUtils';
@@ -21,7 +21,7 @@ export default function Customers() {
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -31,6 +31,12 @@ export default function Customers() {
     name: '',
     phone_number: '',
     government_id: ''
+  });
+  
+  // Credit form state
+  const [creditData, setCreditData] = useState({
+    phone_number: '',
+    amount: ''
   });
 
   useEffect(() => {
@@ -118,14 +124,6 @@ export default function Customers() {
           aValue = a.government_id || '';
           bValue = b.government_id || '';
           break;
-        case 'total_orders':
-          aValue = receipts.filter(r => r.customer_id === a.customer_id).length;
-          bValue = receipts.filter(r => r.customer_id === b.customer_id).length;
-          break;
-        case 'total_spent':
-          aValue = receipts.filter(r => r.customer_id === a.customer_id).reduce((sum, r) => sum + (r.total || 0), 0);
-          bValue = receipts.filter(r => r.customer_id === b.customer_id).reduce((sum, r) => sum + (r.total || 0), 0);
-          break;
         default:
           aValue = a.name || '';
           bValue = b.name || '';
@@ -159,24 +157,24 @@ export default function Customers() {
     }
   };
 
-  const handleEditCustomer = async () => {
-    if (!selectedCustomer || !formData.name.trim() || !formData.phone_number.trim()) {
-      setError('Please fill in name and phone number.');
+  const handleCreditCustomer = async () => {
+    if (!selectedCustomer || !creditData.amount || parseFloat(creditData.amount) <= 0) {
+      setError('Please enter a valid payment amount.');
       return;
     }
 
     try {
-      await customerAPI.editCustomer({
-        customer_id: selectedCustomer.customer_id,
-        ...formData
+      await customerAPI.creditCustomer({
+        phone_number: selectedCustomer.phone_number,
+        amount: parseInt(creditData.amount)
       });
-      setShowEditModal(false);
+      setShowCreditModal(false);
       setSelectedCustomer(null);
-      setFormData({ name: '', phone_number: '', government_id: '' });
+      setCreditData({ phone_number: '', amount: '' });
       setError('');
       await fetchData();
     } catch (err) {
-      console.error('Failed to edit customer:', err);
+      console.error('Failed to credit customer:', err);
       setError(handleAPIError(err));
     }
   };
@@ -185,7 +183,8 @@ export default function Customers() {
     if (!selectedCustomer) return;
 
     try {
-      await customerAPI.deleteCustomer(selectedCustomer.customer_id);
+      // Use 'id' field from FoundCustomer structure
+      await customerAPI.deleteCustomer(selectedCustomer.id || selectedCustomer.customer_id);
       setShowDeleteModal(false);
       setSelectedCustomer(null);
       setError('');
@@ -196,14 +195,13 @@ export default function Customers() {
     }
   };
 
-  const openEditModal = (customer) => {
+  const openCreditModal = (customer) => {
     setSelectedCustomer(customer);
-    setFormData({
-      name: customer.name || '',
+    setCreditData({
       phone_number: customer.phone_number || '',
-      government_id: customer.government_id || ''
+      amount: ''
     });
-    setShowEditModal(true);
+    setShowCreditModal(true);
   };
 
   const openDeleteModal = (customer) => {
@@ -230,12 +228,9 @@ export default function Customers() {
   const handleExportCustomers = () => {
     const columns = getTableColumns('customers');
     const exportData = customers.map(customer => {
-      const stats = getCustomerStats(customer.customer_id);
       return {
         ...customer,
-        total_orders: stats.totalOrders,
-        total_spent: formatCurrency(stats.totalSpent),
-        total_debt: formatCurrency(parseFloat(customer.total_owed) || parseFloat(customer.debt) || parseFloat(customer.outstanding_amount) || parseFloat(customer.balance) || 0)
+        total_debt: formatCurrency(customer.total_owed || 0)
       };
     });
     exportTableToPDF(exportData, columns, 'Customers Report', `customers-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -243,19 +238,9 @@ export default function Customers() {
 
   const getCustomerStats = (customerId) => {
     const customer = customers.find(c => c.customer_id === customerId);
-    const customerReceipts = receipts.filter(r => r.customer_id === customerId);
-    const totalOrders = customerReceipts.length;
-    const totalSpent = customerReceipts.reduce((sum, r) => sum + (r.total || 0), 0);
-    // Try different possible field names for debt
-    const totalDebt = parseFloat(customer?.total_owed) || parseFloat(customer?.debt) || parseFloat(customer?.outstanding_amount) || parseFloat(customer?.balance) || 0;
+    const totalDebt = parseFloat(customer?.total_owed) || 0;
     
-    // Debug: Log debt calculation
-    console.log(`Customer ${customer?.name}: total_owed=${customer?.total_owed}, debt=${customer?.debt}, outstanding_amount=${customer?.outstanding_amount}, balance=${customer?.balance}, final=${totalDebt}`);
-    
-    const lastOrder = customerReceipts.length > 0 ? 
-      new Date(Math.max(...customerReceipts.map(r => new Date(r.created_at || 0)))) : null;
-    
-    return { totalOrders, totalSpent, totalDebt, lastOrder };
+    return { totalDebt };
   };
 
   if (loading) {
@@ -307,41 +292,45 @@ export default function Customers() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-r from-brand-blue to-brand-blue/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm">Total Customers</p>
-                <p className="text-2xl font-bold">{formatNumberWithCommas(customers.length)}</p>
-              </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-users text-xl"></i>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-r from-brand-purple to-brand-purple/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm">Total Customer Revenue</p>
-                <p className="text-2xl font-bold">{formatCurrency(receipts.filter(r => r.customer_id).reduce((sum, r) => sum + (r.total || 0), 0))}</p>
-              </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-money-bill-wave text-xl"></i>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-blue-100">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <i className="fa-solid fa-users text-white text-lg"></i>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Customers</p>
+                  </div>
+                  <p className="text-4xl font-semibold text-gray-700 mb-1">{formatNumberWithCommas(customers.length)}</p>
+                  <p className="text-sm text-blue-600 font-medium">
+                    <i className="fa-solid fa-arrow-up text-xs mr-1"></i>
+                    Active accounts
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-status-red to-status-red/80 p-4 rounded-xl shadow-lg text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-100 text-sm">Total Debt Owed</p>
-                <p className="text-2xl font-bold">{formatCurrency(customers.reduce((sum, c) => {
-                  // Try different possible field names for debt
-                  const debt = parseFloat(c.total_owed) || parseFloat(c.debt) || parseFloat(c.outstanding_amount) || parseFloat(c.balance) || 0;
-                  return sum + debt;
-                }, 0))}</p>
-              </div>
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <i className="fa-solid fa-exclamation-triangle text-xl"></i>
+          
+          <div className="group relative overflow-hidden bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-red-100">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <i className="fa-solid fa-exclamation-triangle text-white text-lg"></i>
+                    </div>
+                    <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Debt Owed</p>
+                  </div>
+                  <p className="text-4xl font-semibold text-gray-700 mb-1">{formatCurrency(customers.reduce((sum, c) => sum + (parseFloat(c.total_owed) || 0), 0))}</p>
+                  <p className="text-sm text-red-600 font-medium">
+                    <i className="fa-solid fa-info-circle text-xs mr-1"></i>
+                    Outstanding payments
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -389,10 +378,6 @@ export default function Customers() {
                 <option value="name-desc">Name (Z-A)</option>
                 <option value="phone_number-asc">Phone (A-Z)</option>
                 <option value="phone_number-desc">Phone (Z-A)</option>
-                <option value="total_orders-desc">Orders (Most)</option>
-                <option value="total_orders-asc">Orders (Least)</option>
-                <option value="total_spent-desc">Spent (Most)</option>
-                <option value="total_spent-asc">Spent (Least)</option>
               </select>
             </div>
             <div className="flex items-end">
@@ -413,15 +398,13 @@ export default function Customers() {
         </div>
 
         {/* Customers Table */}
-        <section className="flex-1 flex flex-col bg-card-bg rounded-xl shadow-lg overflow-hidden">
-          <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 border-b border-border-light">
-            <span className="col-span-2 font-semibold text-text-secondary">Customer</span>
-            <span className="col-span-2 font-semibold text-text-secondary">Phone</span>
-            <span className="col-span-2 font-semibold text-text-secondary">Government ID</span>
-            <span className="col-span-1 font-semibold text-text-secondary text-center">Orders</span>
-            <span className="col-span-2 font-semibold text-text-secondary text-right">Total Spent</span>
-            <span className="col-span-2 font-semibold text-text-secondary text-right">Debt</span>
-            <span className="col-span-1 font-semibold text-text-secondary text-center">Actions</span>
+        <section className="flex-1 flex flex-col bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+          <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+            <span className="col-span-4 font-semibold text-gray-600 text-xs uppercase tracking-wider">Customer</span>
+            <span className="col-span-4 font-semibold text-gray-600 text-xs uppercase tracking-wider">Phone</span>
+ {/*             <span className="col-span-3 font-semibold text-text-secondary">Government ID</span>*/}            
+            <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-right">Debt</span>
+            <span className="col-span-2 font-semibold text-gray-600 text-xs uppercase tracking-wider text-center">Actions</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredAndSortedCustomers.length === 0 ? (
@@ -435,64 +418,54 @@ export default function Customers() {
                 const stats = getCustomerStats(customer.customer_id);
                 
                 return (
-                  <div key={customer.customer_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-border-light hover:bg-light-bg transition-colors">
+                  <div key={customer.customer_id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-gray-100 hover:bg-slate-50/50 transition-colors">
                     {/* Customer */}
-                    <div className="col-span-2">
-                      <p className="font-medium text-text-primary">{customer.name}</p>
-                      <p className="text-sm text-text-secondary">ID: {customer.customer_id?.substring(0, 8)}...</p>
+                    <div className="col-span-4">
+                      <p className="font-semibold text-gray-700">{customer.name}</p>
+                      <p className="text-xs text-gray-500 font-mono">ID: {customer.customer_id?.substring(0, 8)}...</p>
                     </div>
 
                     {/* Phone */}
-                    <div className="col-span-2">
-                      <p className="text-sm text-text-primary">{customer.phone_number || 'N/A'}</p>
+                    <div className="col-span-4">
+                      <p className="text-sm text-gray-600">{customer.phone_number || 'N/A'}</p>
                     </div>
 
                     {/* Government ID */}
-                    <div className="col-span-2">
+ {/*                    <div className="col-span-3">
                       <p className="text-sm text-text-primary">{customer.government_id || 'N/A'}</p>
-                    </div>
-
-                    {/* Orders */}
-                    <div className="col-span-1 text-center">
-                      <span className="font-semibold text-text-primary">
-                        {formatNumberWithCommas(stats.totalOrders)}
-                      </span>
-                    </div>
-
-                    {/* Total Spent */}
-                    <div className="col-span-2 text-right">
-                      <p className="font-medium text-text-primary">{formatCurrency(stats.totalSpent)}</p>
-                    </div>
+                    </div> */}
 
                     {/* Debt */}
                     <div className="col-span-2 text-right">
-                      <p className={`font-medium ${stats.totalDebt > 0 ? 'text-status-red' : 'text-status-green'}`}>
+                      <p className={`font-semibold text-lg ${stats.totalDebt > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {formatCurrency(stats.totalDebt)}
                       </p>
-                      <p className="text-xs text-text-secondary">
+                      <p className="text-xs text-gray-500">
                         {stats.totalDebt > 0 ? 'Outstanding' : 'Paid'}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="col-span-1 flex items-center justify-center gap-1">
+                    <div className="col-span-2 flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => openDetailsModal(customer)}
-                        className="p-2 text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-colors"
+                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-all hover:scale-105"
                         title="View Details"
                       >
                         <i className="fa-solid fa-eye"></i>
                       </button>
-                      <button
-                        onClick={() => openEditModal(customer)}
-                        className="p-2 text-status-yellow hover:bg-status-yellow/10 rounded-lg transition-colors"
-                        title="Edit Customer"
-                      >
-                        <i className="fa-solid fa-edit"></i>
-                      </button>
+                      {stats.totalDebt > 0 && (
+                        <button
+                          onClick={() => openCreditModal(customer)}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all hover:scale-105"
+                          title="Make Payment"
+                        >
+                          <i className="fa-solid fa-money-bill-wave"></i>
+                        </button>
+                      )}
                       <button
                         onClick={() => openDeleteModal(customer)}
-                        className="p-2 text-status-red hover:bg-status-red/10 rounded-lg transition-colors"
+                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105"
                         title="Delete Customer"
                       >
                         <i className="fa-solid fa-trash"></i>
@@ -556,52 +529,62 @@ export default function Customers() {
           </div>
         </Modal>
 
-        {/* Edit Customer Modal */}
-        <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
+        {/* Credit Customer Modal */}
+        <Modal isOpen={showCreditModal} onClose={() => setShowCreditModal(false)}>
           <div className="space-y-6 max-w-2xl">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-2xl font-bold text-text-primary">Edit Customer</h3>
-                <p className="text-text-secondary">Update customer information</p>
+                <h3 className="text-2xl font-bold text-text-primary">Make Payment</h3>
+                <p className="text-text-secondary">Reduce customer debt</p>
               </div>
               <button 
-                onClick={() => setShowEditModal(false)} 
+                onClick={() => setShowCreditModal(false)} 
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <i className="fa-solid fa-times fa-lg" />
               </button>
             </div>
 
+            {selectedCustomer && (
+              <div className="bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 p-4 rounded-xl">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-text-secondary text-sm">Customer</p>
+                    <p className="font-semibold text-lg">{selectedCustomer.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-secondary text-sm">Current Debt</p>
+                    <p className="font-semibold text-lg text-status-red">{formatCurrencyWhole(selectedCustomer.total_owed || 0)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
               <FormField
-                id="name"
-                label="Customer Name *"
-                placeholder="Enter customer name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                id="credit_amount"
+                label="Payment Amount (RWF) *"
+                type="number"
+                placeholder="Enter payment amount"
+                value={creditData.amount}
+                onChange={(e) => setCreditData({...creditData, amount: e.target.value})}
+                inputProps={{
+                  min: 1,
+                  max: selectedCustomer?.total_owed || undefined
+                }}
               />
-              <FormField
-                id="phone_number"
-                label="Phone Number *"
-                placeholder="Enter phone number"
-                value={formData.phone_number}
-                onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
-              />
-              <FormField
-                id="government_id"
-                label="Government ID"
-                placeholder="Enter government ID (optional)"
-                value={formData.government_id}
-                onChange={(e) => setFormData({...formData, government_id: e.target.value})}
-              />
+              <div className="text-sm text-text-secondary">
+                <p>• Enter the amount the customer is paying</p>
+                <p>• Maximum: {formatCurrencyWhole(selectedCustomer?.total_owed || 0)}</p>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
-              <SecondaryButton onClick={() => setShowEditModal(false)} className="flex-1">
+              <SecondaryButton onClick={() => setShowCreditModal(false)} className="flex-1">
                 Cancel
               </SecondaryButton>
-              <PrimaryButton onClick={handleEditCustomer} className="flex-1">
-                <i className="fa-solid fa-save mr-2"></i> Update Customer
+              <PrimaryButton onClick={handleCreditCustomer} className="flex-1 bg-status-green hover:bg-status-green/90">
+                <i className="fa-solid fa-money-bill-wave mr-2"></i> Process Payment
               </PrimaryButton>
             </div>
           </div>
@@ -647,26 +630,14 @@ export default function Customers() {
                   </div>
                 </div>
 
-                {/* Order Statistics */}
+                {/* Debt Statistics */}
                 {(() => {
                   const stats = getCustomerStats(selectedCustomer.customer_id);
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="bg-status-green/10 p-4 rounded-lg text-center">
-                        <p className="text-status-green text-sm">Total Orders</p>
-                        <p className="text-2xl font-bold text-status-green">{stats.totalOrders}</p>
-                      </div>
-                      <div className="bg-brand-blue/10 p-4 rounded-lg text-center">
-                        <p className="text-brand-blue text-sm">Total Spent</p>
-                        <p className="text-2xl font-bold text-brand-blue">{formatCurrency(stats.totalSpent)}</p>
-                      </div>
-                      <div className={`p-4 rounded-lg text-center ${stats.totalDebt > 0 ? 'bg-status-red/10' : 'bg-status-green/10'}`}>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className={`p-6 rounded-lg text-center ${stats.totalDebt > 0 ? 'bg-status-red/10' : 'bg-status-green/10'}`}>
                         <p className={`text-sm ${stats.totalDebt > 0 ? 'text-status-red' : 'text-status-green'}`}>Outstanding Debt</p>
-                        <p className={`text-2xl font-bold ${stats.totalDebt > 0 ? 'text-status-red' : 'text-status-green'}`}>{formatCurrency(stats.totalDebt)}</p>
-                      </div>
-                      <div className="bg-status-yellow/10 p-4 rounded-lg text-center">
-                        <p className="text-status-yellow text-sm">Last Order</p>
-                        <p className="text-lg font-bold text-status-yellow">{stats.lastOrder ? formatDate(stats.lastOrder) : 'Never'}</p>
+                        <p className={`text-3xl font-bold ${stats.totalDebt > 0 ? 'text-status-red' : 'text-status-green'}`}>{formatCurrency(stats.totalDebt)}</p>
                       </div>
                     </div>
                   );

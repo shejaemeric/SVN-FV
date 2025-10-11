@@ -184,7 +184,7 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
         import('html2canvas').then(html2canvas => {
           html2canvas.default(chartElement, {
             backgroundColor: '#ffffff',
-            scale: 1.5, // Balanced resolution to avoid distortion
+            scale: 2, // Higher quality for PDF
             useCORS: true,
             allowTaint: true,
             logging: false,
@@ -193,13 +193,16 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
             scrollX: 0,
             scrollY: 0,
             windowWidth: chartElement.offsetWidth,
-            windowHeight: chartElement.offsetHeight
+            windowHeight: chartElement.offsetHeight,
+            imageTimeout: 0,
+            removeContainer: true
           }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            // Return original dimensions to maintain aspect ratio
             resolve({
               data: imgData,
-              width: canvas.width,
-              height: canvas.height
+              width: chartElement.offsetWidth,
+              height: chartElement.offsetHeight
             });
           }).catch(error => {
             console.warn('Failed to capture chart screenshot:', error);
@@ -244,13 +247,21 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
       try {
         const imgResult = await captureChartScreenshot(summaryCardsElement, 'Summary Cards');
         if (imgResult && imgResult.data) {
-          // Calculate proper aspect ratio
+          // Calculate proper aspect ratio without distortion
           const maxWidth = 170; // mm
+          const maxHeight = 60; // mm
           const aspectRatio = imgResult.width / imgResult.height;
-          const imgWidth = maxWidth;
-          const imgHeight = maxWidth / aspectRatio;
           
-          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight);
+          let imgWidth = maxWidth;
+          let imgHeight = imgWidth / aspectRatio;
+          
+          // If height exceeds max, scale down proportionally
+          if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * aspectRatio;
+          }
+          
+          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight, undefined, 'FAST');
           currentY += imgHeight + 20;
         } else {
           // Fallback to text representation
@@ -310,21 +321,21 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
           doc.text(section.title, 20, currentY);
           currentY += 15;
           
-          // Calculate proper aspect ratio
+          // Calculate proper aspect ratio without distortion
           const maxWidth = 170; // mm
           const maxHeight = 120; // mm
           const aspectRatio = imgResult.width / imgResult.height;
           
           let imgWidth = maxWidth;
-          let imgHeight = maxWidth / aspectRatio;
+          let imgHeight = imgWidth / aspectRatio;
           
           // If height exceeds max, scale down proportionally
           if (imgHeight > maxHeight) {
             imgHeight = maxHeight;
-            imgWidth = maxHeight * aspectRatio;
+            imgWidth = imgHeight * aspectRatio;
           }
           
-          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight);
+          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight, undefined, 'FAST');
           currentY += imgHeight + 20;
         }
       } catch (error) {
@@ -372,21 +383,21 @@ export const exportDashboardToPDF = async (chartsData, title, filename) => {
       try {
         const imgResult = await captureChartScreenshot(chartElement, chart.title);
         if (imgResult && imgResult.data) {
-          // Calculate proper aspect ratio
+          // Calculate proper aspect ratio without distortion
           const maxWidth = 170; // mm
           const maxHeight = 100; // mm
           const aspectRatio = imgResult.width / imgResult.height;
           
           let imgWidth = maxWidth;
-          let imgHeight = maxWidth / aspectRatio;
+          let imgHeight = imgWidth / aspectRatio;
           
           // If height exceeds max, scale down proportionally
           if (imgHeight > maxHeight) {
             imgHeight = maxHeight;
-            imgWidth = maxHeight * aspectRatio;
+            imgWidth = imgHeight * aspectRatio;
           }
           
-          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight);
+          doc.addImage(imgResult.data, 'PNG', 20, currentY, imgWidth, imgHeight, undefined, 'FAST');
           currentY += imgHeight + 10;
         } else {
           // Fallback to generated chart representation

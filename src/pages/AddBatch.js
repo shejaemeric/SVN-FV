@@ -186,16 +186,12 @@ export default function AddBatch() {
       setError('Please enter a valid number of items (must be a positive integer).');
       return;
     }
-    if (!latestTax || parseInt(latestTax) < 0) {
-      setError('Please enter a valid tax rate (must be a non-negative integer).');
-      return;
-    }
 
     try {
+      console.log('Saving batch...');
       // Validate data types before sending
       const buyingPriceInt = parseInt(buyingPrice);
       const batchNumberInt = parseInt(batchNumber);
-      const taxInt = parseInt(latestTax);
       
       // Ensure all numeric values are valid integers
       if (!Number.isInteger(buyingPriceInt) || buyingPriceInt <= 0) {
@@ -204,10 +200,6 @@ export default function AddBatch() {
       }
       if (!Number.isInteger(batchNumberInt) || batchNumberInt <= 0) {
         setError('Number of items must be a positive integer.');
-        return;
-      }
-      if (!Number.isInteger(taxInt) || taxInt < 0) {
-        setError('Tax rate must be a non-negative integer.');
         return;
       }
 
@@ -219,7 +211,7 @@ export default function AddBatch() {
           expiry_date: expiryDate || null,    // Option<NaiveDate>
           manufacturer_batch_id: manufacturerBatchId || null, // Option<String>
           number: batchNumberInt,            // i32
-          tax: taxInt                        // i32
+          tax: 0                        // i32
         }],
         supplier_id: selectedSupplier
       };
@@ -483,27 +475,25 @@ export default function AddBatch() {
               value={newProduct.qr_code}
               onChange={(e) => setNewProduct({...newProduct, qr_code: e.target.value})}
             />
-            <div className="grid grid-cols-2 gap-3">
                               <NumberField
                   id="new-product-size"
                   label="Size"
                   placeholder="Size"
                   value={newProduct.size.toString()}
-                  onChange={(e) => setNewProduct({...newProduct, size: parseInt(e.target.value) || 0})}
-                  min={0}
-                  step="1"
+                  onChange={(e) => setNewProduct({...newProduct, size: parseInt(e.target.value) || ''})}
                 />
-                             <SelectField
+            <SelectField
                  id="new-product-unit"
                  value={newProduct.unit}
                  onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
                  options={[
                    { value: 'g', label: 'Grams (g)' },
-                   { value: 'ml', label: 'Milliliters (ml)' }
+                   { value: 'ml', label: 'Milliliters (ml)' },
+                   { value: 'ml', label: 'Milliliters (ml)' },
+                   { value: 'l', label: 'Liters (L)' }
                  ]}
                  placeholder="Select unit..."
                />
-            </div>
             {/* Image Upload Disabled - Using Default Image */}
             <FormField
               id="new-product-image"

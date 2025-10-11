@@ -112,12 +112,14 @@ export const productAPI = {
     return apiRequest('/get_all_products');
   },
 
-  // Find product by QR code
-  findProduct: async (qrCode) => {
-    return apiRequest('/find_product', {
-      method: 'GET',
-      body: JSON.stringify({ qr_code: qrCode }),
-    });
+  // Find product by QR code or product ID
+  findProduct: async (query) => {
+    // query can be { qr_code: "xxx" } or { product_id: "xxx" }
+    const params = new URLSearchParams();
+    if (query.qr_code) params.append('qr_code', query.qr_code);
+    if (query.product_id) params.append('product_id', query.product_id);
+    
+    return apiRequest(`/find_product?${params.toString()}`);
   },
 
   // Create new product
@@ -155,60 +157,71 @@ export const productAPI = {
   deleteProduct: async (qrCode) => {
     return apiRequest('/delete_product', {
       method: 'DELETE',
-      body: qrCode, // Send QR code as plain string, not JSON
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: qrCode,
     });
   },
 };
 
-// Stock/Batch API Functions
+// Stock API Functions
 export const stockAPI = {
   // Get all stocks
   getAllStocks: async () => {
     return apiRequest('/get_all_stocks');
   },
 
-  // Get product batches by QR code
-  getProductBatches: async (qrCode) => {
-    return apiRequest('/get_product_batches', {
-      method: 'GET',
-      body: JSON.stringify(qrCode),
-    });
+  // Get product stock by QR code
+  getProductStock: async (qrCode) => {
+    return apiRequest(`/get_product_stock?qr_code=${encodeURIComponent(qrCode)}`);
   },
 
-  // Find batch by ID
-  findBatch: async (batchId) => {
-    return apiRequest('/find_batch', {
-      method: 'GET',
-      body: JSON.stringify(batchId),
-    });
+  // Find stock by ID
+  findStock: async (stockId) => {
+    return apiRequest(`/find_stock?stock_id=${encodeURIComponent(stockId)}`);
   },
 
-  // Edit batch
-  editBatch: async (batchData) => {
+  // Edit stock
+  editStock: async (stockData) => {
     const dataToSend = {
-      batch_id: batchData.batch_id,
-      number: parseInt(batchData.number)
+      stock_id: stockData.stock_id,
+      product_id: stockData.product_id,
+      buying_price: stockData.buying_price,
+      tax: stockData.tax,
+      expiry_date: stockData.expiry_date,
+      original_number_delta: stockData.original_number_delta,
+      manufacturer_batch_id: stockData.manufacturer_batch_id
     };
     
-    return apiRequest('/edit_batch', {
+    // Remove undefined fields
+    Object.keys(dataToSend).forEach(key => dataToSend[key] === undefined && delete dataToSend[key]);
+    
+    return apiRequest('/edit_stock', {
       method: 'PATCH',
       body: JSON.stringify(dataToSend),
     });
   },
 
-  // Delete batch
-  deleteBatch: async (batchId) => {
-    return apiRequest('/delete_batch', {
+  // Delete stock by ID
+  deleteStock: async (stockId) => {
+    return apiRequest('/delete_stock', {
       method: 'DELETE',
-      body: JSON.stringify(batchId),
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: stockId,
     });
   },
 
-  // Delete all product batches by QR code
-  deleteProductBatches: async (qrCode) => {
-    return apiRequest('/delete_product_batches', {
+  // Delete all product stock by QR code
+  deleteProductStock: async (qrCode) => {
+    return apiRequest('/delete_product_stock', {
       method: 'DELETE',
-      body: JSON.stringify(qrCode),
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: qrCode,
     });
   },
 };
@@ -220,19 +233,32 @@ export const supplierAPI = {
     return apiRequest('/get_all_suppliers');
   },
 
-  // Create new supplier
-  createSupplier: async (supplierData) => {
+  // Find supplier by ID
+  findSupplier: async (supplierId) => {
+    return apiRequest(`/find_supplier?supplier_id=${encodeURIComponent(supplierId)}`);
+  },
+
+  // Create new supplier (requires supplier name as string)
+  createSupplier: async (supplierName) => {
     return apiRequest('/create_supplier', {
       method: 'POST',
-      body: JSON.stringify(supplierData),
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: supplierName,
     });
   },
 
   // Pay supplier
   paySupplier: async (paymentData) => {
+    const dataToSend = {
+      id: paymentData.id,
+      amount: parseInt(paymentData.amount)
+    };
+    
     return apiRequest('/pay_supplier', {
       method: 'PATCH',
-      body: JSON.stringify(paymentData),
+      body: JSON.stringify(dataToSend),
     });
   },
 
@@ -241,25 +267,31 @@ export const supplierAPI = {
     return apiRequest('/get_all_supplier_payments');
   },
 
-  // Find supplier payment
-  findSupplierPayment: async (paymentData) => {
-    return apiRequest('/find_supplier_payment', {
-      method: 'GET',
-      body: JSON.stringify(paymentData),
-    });
+  // Get supplier payments by supplier ID
+  getSupplierPayments: async (supplierId) => {
+    return apiRequest(`/get_supplier_payments?supplier_id=${encodeURIComponent(supplierId)}`);
+  },
+
+  // Find supplier payment by ID
+  findSupplierPayment: async (paymentId) => {
+    return apiRequest(`/find_supplier_payment?payment_id=${encodeURIComponent(paymentId)}`);
   },
 
   // Edit supplier payment
   editSupplierPayment: async (paymentData) => {
+    const dataToSend = {
+      payment_id: paymentData.payment_id,
+      supplier_id: paymentData.supplier_id,
+      amount: paymentData.amount
+    };
+    
+    // Remove undefined fields
+    Object.keys(dataToSend).forEach(key => dataToSend[key] === undefined && delete dataToSend[key]);
+    
     return apiRequest('/edit_supplier_payment', {
       method: 'PATCH',
-      body: JSON.stringify(paymentData),
+      body: JSON.stringify(dataToSend),
     });
-  },
-
-  // Get supplier payments (alternative endpoint)
-  getSupplierPayments: async () => {
-    return apiRequest('/get_supplier_payments');
   },
 };
 
@@ -268,6 +300,17 @@ export const salesAPI = {
   // Get all sales
   getAllSales: async () => {
     return apiRequest('/get_all_sales');
+  },
+
+  // Delete sale by ID
+  deleteSale: async (saleId) => {
+    return apiRequest('/delete_sale', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: saleId,
+    });
   },
 };
 
@@ -280,10 +323,7 @@ export const receiptAPI = {
 
   // Find receipt by ID
   findReceipt: async (receiptId) => {
-    return apiRequest('/find_receipt', {
-      method: 'GET',
-      body: JSON.stringify(receiptId),
-    });
+    return apiRequest(`/find_receipt?receipt_id=${encodeURIComponent(receiptId)}`);
   },
 
   // Create new receipt
@@ -314,6 +354,17 @@ export const receiptAPI = {
       body: JSON.stringify(dataToSend),
     });
   },
+
+  // Delete receipt by ID
+  deleteReceipt: async (receiptId) => {
+    return apiRequest('/delete_receipt', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: receiptId,
+    });
+  },
 };
 
 // Customer API Functions
@@ -323,19 +374,67 @@ export const customerAPI = {
     return apiRequest('/get_all_customers');
   },
 
-  // Find customer by phone number
-  findCustomer: async (phoneNumber) => {
-    return apiRequest('/find_customer', {
-      method: 'GET',
-      body: JSON.stringify(phoneNumber),
-    });
+  // Find customer by ID
+  findCustomer: async (customerId) => {
+    return apiRequest(`/find_customer?customer_id=${encodeURIComponent(customerId)}`);
   },
 
   // Register customer
   registerCustomer: async (customerData) => {
+    const dataToSend = {
+      name: customerData.name,
+      phone_number: customerData.phone_number,
+      government_id: customerData.government_id
+    };
+    
+    // Remove undefined fields
+    Object.keys(dataToSend).forEach(key => dataToSend[key] === undefined && delete dataToSend[key]);
+    
     return apiRequest('/register_customer', {
       method: 'POST',
-      body: JSON.stringify(customerData),
+      body: JSON.stringify(dataToSend),
+    });
+  },
+
+  // Edit customer (if backend supports it - not in provided docs, so commenting out)
+  editCustomer: async (customerData) => {
+    const dataToSend = {
+      customer_id: customerData.customer_id,
+      name: customerData.name,
+      phone_number: customerData.phone_number,
+      government_id: customerData.government_id
+    };
+    
+    // Remove undefined fields
+    Object.keys(dataToSend).forEach(key => dataToSend[key] === undefined && delete dataToSend[key]);
+    
+    return apiRequest('/edit_customer', {
+      method: 'PATCH',
+      body: JSON.stringify(dataToSend),
+    });
+  },
+
+  // Delete customer (if backend supports it - not in provided docs, so commenting out)
+  deleteCustomer: async (customerId) => {
+    return apiRequest('/delete_customer', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: customerId,
+    });
+  },
+
+  // Credit customer
+  creditCustomer: async (creditData) => {
+    const dataToSend = {
+      phone_number: creditData.phone_number,
+      amount: parseInt(creditData.amount)
+    };
+    
+    return apiRequest('/credit_customer', {
+      method: 'PATCH',
+      body: JSON.stringify(dataToSend),
     });
   },
 };
@@ -357,9 +456,17 @@ export const invoiceAPI = {
 
   // Find invoice by ID
   findInvoice: async (invoiceId) => {
-    return apiRequest('/find_invoice', {
-      method: 'GET',
-      body: JSON.stringify(invoiceId),
+    return apiRequest(`/find_invoice?invoice_id=${encodeURIComponent(invoiceId)}`);
+  },
+
+  // Delete invoice by ID
+  deleteInvoice: async (invoiceId) => {
+    return apiRequest('/delete_invoice', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: invoiceId,
     });
   },
 };
@@ -368,7 +475,7 @@ export const invoiceAPI = {
 export const scanAPI = {
   // Scan item by QR code - redirects to productAPI.findProduct
   scanItem: async (qrCode) => {
-    return productAPI.findProduct(qrCode);
+    return productAPI.findProduct({ qr_code: qrCode });
   },
 };
 

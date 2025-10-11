@@ -9,6 +9,7 @@ import ErrorToast from '../components/ErrorToast';
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import { productAPI, receiptAPI, customerAPI } from '../services/api';
 import { downloadReceiptPDF, printReceipt } from '../utils/receiptUtils';
+import { DEFAULT_PRODUCT_IMAGE } from '../utils/imageUtils';
 
 export default function POS() {
   const [cartItems, setCartItems] = useState([]);
@@ -98,7 +99,7 @@ export default function POS() {
           name: selectedProduct.name,
           unitPrice: selectedProduct.selling_price || selectedProduct.untaxed_price || 0,
           quantity: quantity,
-          image: selectedProduct.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'
+          image: selectedProduct.image_path || DEFAULT_PRODUCT_IMAGE
         };
         setCartItems(prev => [...prev, newItem]);
       }
@@ -257,10 +258,9 @@ export default function POS() {
       // Create receipt with conditional fields based on payment status
       const receiptData = {
         sale_creators: saleCreators,
-        total: Math.round(total * 100), 
-        ...(notPaidFull && {
+        ...(notPaidFull && selectedCustomer && {
           customer_id: selectedCustomer,
-          unpaid: remainingAmount 
+          unpaid: Math.round(remainingAmount)
         })
       };
 
@@ -307,17 +307,17 @@ export default function POS() {
       <ErrorToast error={error} onClose={() => setError('')} />
       <PageLayout mainId="cashier-page" mainClassName="grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
         {/* Left Panel: Product Selection */}
-        <section id="product-panel" className="lg:col-span-2 flex flex-col h-full min-h-0 bg-gradient-to-br from-white to-light-bg rounded-2xl shadow-xl p-6 border border-border-light">
+        <section id="product-panel" className="lg:col-span-2 flex flex-col h-full min-h-0 bg-white rounded-2xl shadow-sm p-6 border border-border-light">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-text-primary mb-1">
-                <i className="fa-solid fa-cash-register mr-3 text-brand-blue"></i>
+                <i className="fa-solid fa-cash-register mr-3 text-sky-600"></i>
                 Point of Sale
               </h1>
               <p className="text-text-secondary">Search or scan products to add them to the cart</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="bg-brand-blue/10 text-brand-blue px-3 py-2 rounded-full text-sm font-medium">
+              <div className="bg-sky-50 text-sky-600 px-3 py-2 rounded-lg text-sm font-medium border border-sky-200">
                 <i className="fa-solid fa-qrcode mr-1"></i>
                 Scan QR Code
               </div>
@@ -332,7 +332,7 @@ export default function POS() {
           <div className="mb-6 bg-card-bg rounded-xl p-4 shadow-sm border border-border-light">
             <div className="relative">
               <label className="block text-sm font-medium text-text-primary mb-3">
-                <i className="fa-solid fa-search mr-2 text-brand-blue"></i>
+                <i className="fa-solid fa-search mr-2 text-sky-600"></i>
                 Search & Select Products
               </label>
               <div className="relative">
@@ -373,7 +373,7 @@ export default function POS() {
                     {products.length} products available
                   </span>
                   <span className="flex items-center text-text-secondary">
-                    <i className="fa-solid fa-shopping-cart mr-2 text-brand-blue"></i>
+                    <i className="fa-solid fa-shopping-cart mr-2 text-sky-600"></i>
                     {cartItems.length} items in cart
                   </span>
                 </div>
@@ -388,10 +388,10 @@ export default function POS() {
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-text-primary">
-                <i className="fa-solid fa-shopping-cart mr-2 text-brand-blue"></i>
+                <i className="fa-solid fa-shopping-cart mr-2 text-sky-600"></i>
                 Shopping Cart
               </h2>
-              <div className="bg-brand-blue/10 text-brand-blue px-3 py-1 rounded-full text-sm font-medium">
+              <div className="bg-sky-50 text-sky-600 px-3 py-1 rounded-lg text-sm font-medium border border-sky-200">
                 {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
               </div>
             </div>
@@ -404,8 +404,8 @@ export default function POS() {
                   </div>
                   <h3 className="text-xl font-medium mb-3 text-text-primary">Your cart is empty</h3>
                   <p className="text-text-secondary mb-6">Search or scan products to get started</p>
-                  <div className="max-w-md mx-auto p-4 bg-brand-blue/5 rounded-xl border border-brand-blue/20">
-                    <p className="text-sm text-brand-blue">
+                  <div className="max-w-md mx-auto p-4 bg-sky-50 rounded-xl border border-sky-200">
+                    <p className="text-sm text-sky-700">
                       <i className="fa-solid fa-lightbulb mr-2"></i>
                       <strong>Quick Start:</strong> Use the search bar above or scan QR codes to add products to your cart
                     </p>
@@ -433,11 +433,11 @@ export default function POS() {
         </section>
 
         {/* Right Panel: Receipt */}
-        <aside id="checkout-panel" className="lg:col-span-1 bg-gradient-to-br from-brand-blue/5 via-card-bg to-brand-blue/10 rounded-2xl shadow-xl flex flex-col p-6 min-h-0 border border-brand-blue/20">
+        <aside id="checkout-panel" className="lg:col-span-1 bg-white rounded-2xl shadow-sm flex flex-col p-6 min-h-0 border border-border-light">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-text-primary">
-                <i className="fa-solid fa-receipt mr-2 text-brand-blue"></i>
+                <i className="fa-solid fa-receipt mr-2 text-sky-600"></i>
                 Receipt
               </h2>
               <p className="text-sm text-text-secondary">Order Summary</p>
@@ -456,7 +456,7 @@ export default function POS() {
           <div className="bg-card-bg border border-border-light rounded-xl p-4 mb-4 shadow-sm">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border-light">
               <p className="text-sm font-semibold text-text-primary">
-                <i className="fa-solid fa-list mr-2 text-brand-blue"></i>
+                <i className="fa-solid fa-list mr-2 text-sky-600"></i>
                 Order Items
               </p>
               <div className="flex items-center gap-2">
@@ -464,7 +464,7 @@ export default function POS() {
                 <div className="w-2 h-2 bg-status-green rounded-full animate-pulse"></div>
               </div>
             </div>
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1 max-h-[50vh] overflow-y-auto">
               {cartItems.length === 0 ? (
                 <div className="text-center py-8 text-text-secondary">
                   <i className="fa-solid fa-shopping-basket text-3xl mb-3 text-text-secondary"></i>
@@ -485,36 +485,20 @@ export default function POS() {
             </div>
           </div>
 
-          <div id="price-calculation" className="bg-card-bg rounded-xl p-4 mb-4 shadow-sm border border-border-light">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">
-              <i className="fa-solid fa-calculator mr-2 text-brand-blue"></i>
-              Price Calculation
-            </h3>
-            <div className="space-y-3 text-text-primary">
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-text-secondary">Subtotal</span>
-                <span className="font-medium">RWF {subtotal.toFixed(0)}</span>
+          <div id="price-calculation" className="bg-card-bg rounded-xl p-0 mb-4 shadow-sm ">
+          <div className="flex justify-between items-center text-xl font-bold  p-4 rounded-lg ">
+                <p className="text-sky-700">Total Amount</p>
+                <p className="font-mono text-sky-700">RWF {total.toFixed(0)}</p>
               </div>
-{/*               <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-text-secondary">Taxes (18%)</span>
-                <span className="font-medium">RWF {taxes.toFixed(0)}</span>
-              </div> */}
-              <div className="border-t border-border-light my-3" />
-              <div className="flex justify-between items-center text-xl font-bold bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 p-4 rounded-lg border border-brand-blue/20">
-                <p className="text-brand-blue">Total Amount</p>
-                <p className="font-mono text-brand-blue">RWF {total.toFixed(0)}</p>
-              </div>
-            </div>
+            
+
+
           </div>
 
           {/* Payment Options */}
-          <div id="payment-options" className="bg-card-bg rounded-xl p-4 mb-4 shadow-sm border border-border-light">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">
-              <i className="fa-solid fa-credit-card mr-2 text-brand-blue"></i>
-              Payment Options
-            </h3>
+          <div id="payment-options" className="bg-card-bg rounded-xl p-0 mb-4 shadow-sm border border-border-light">
             <div className="space-y-4">
-              <div className="flex items-center p-4 bg-gradient-to-r from-light-bg to-brand-blue/5 rounded-lg border border-border-light">
+              <div className="flex items-center p-4 rounded-lg ">
                 <input
                   type="checkbox"
                   id="not-paid-full"
@@ -529,26 +513,26 @@ export default function POS() {
                       setAmountPaid(0);
                     }
                   }}
-                  className="w-5 h-5 text-brand-blue bg-card-bg border-border-light rounded focus:ring-brand-blue focus:ring-2"
+                  className="w-5 h-5 text-sky-600 bg-white border-sky-300 rounded focus:ring-sky-600 focus:ring-2"
                 />
                 <label htmlFor="not-paid-full" className="ml-3 text-sm font-medium text-text-primary">
-                  <i className="fa-solid fa-clock mr-2 text-status-yellow"></i>
+
                   Partial Payment (Customer Credit)
                 </label>
               </div>
 
             {notPaidFull && (
-              <div className="space-y-4 p-4 bg-gradient-to-r from-brand-blue/5 to-brand-blue/10 rounded-lg border border-brand-blue/20">
+              <div className="space-y-4 p-4 rounded-lg border">
                 {/* Customer Selection */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <label className="block text-sm font-medium text-text-primary">
-                      <i className="fa-solid fa-user mr-2 text-brand-blue"></i>
+                      <i className="fa-solid fa-user mr-2 text-sky-600"></i>
                       Select Customer
                     </label>
-                    <button 
+                    <button
                       onClick={() => setShowCustomerModal(true)}
-                      className="text-xs text-brand-blue hover:text-brand-blue/80 font-medium bg-card-bg px-3 py-1 rounded-full border border-brand-blue/20 hover:bg-brand-blue/5 transition-colors"
+                      className="text-xs text-sky-600 hover:text-sky-700 font-medium bg-white px-3 py-1 rounded-lg border border-sky-200 hover:bg-sky-50 transition-colors"
                     >
                       <i className="fa-solid fa-plus mr-1"></i>
                       Add New Customer
@@ -583,8 +567,8 @@ export default function POS() {
                     type="number"
                     placeholder="Enter amount paid"
                     value={amountPaid}
-                    onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-3 bg-card-bg border border-border-light rounded-lg focus:ring-2 focus:ring-brand-blue focus:outline-none focus:border-brand-blue"
+                    onChange={(e) => setAmountPaid(parseFloat(e.target.value) || null)}
+                    className="w-full px-4 py-3 bg-white border border-border-light rounded-lg focus:ring-2 focus:ring-sky-600 focus:outline-none focus:border-sky-600"
                   />
                 </div>
                 
@@ -602,7 +586,7 @@ export default function POS() {
             </div>
           </div>
 
-          <div id="quick-actions" className="mt-auto space-y-4">
+          <div id="quick-actions">
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-3">
               <button 
@@ -612,31 +596,12 @@ export default function POS() {
                 <i className="fa-solid fa-trash-can" />
                 <span className="hidden sm:inline">Clear Cart</span>
               </button>
-              <button 
-                onClick={handlePrintReceipt}
-                disabled={!receiptCreated}
-                className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-text-secondary/10 to-text-secondary/20 text-text-secondary font-semibold rounded-xl hover:from-text-secondary/20 hover:to-text-secondary/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-text-secondary/20"
-              >
-                <i className="fa-solid fa-print" />
-                <span className="hidden sm:inline">Print</span>
-              </button>
-            </div>
-            
-            <button 
-              onClick={handleDownloadReceipt}
-              disabled={!receiptCreated}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-status-green/10 to-status-green/20 text-status-green font-semibold rounded-xl hover:from-status-green/20 hover:to-status-green/30 transition-all duration-200 border border-status-green/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <i className="fa-solid fa-download" />
-              Download Receipt PDF
-            </button>
-            
             {/* Main Checkout Button */}
             <button 
               id="checkout-button" 
               onClick={completePurchase}
               disabled={processing || cartItems.length === 0 || (notPaidFull && (!selectedCustomer || amountPaid <= 0))}
-              className="w-full py-4 bg-gradient-to-r from-brand-blue via-brand-blue/90 to-brand-blue/80 text-white font-bold text-lg rounded-xl shadow-xl hover:from-brand-blue/90 hover:via-brand-blue/80 hover:to-brand-blue/70 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border border-brand-blue"
+              className="w-full py-4 bg-sky-600 text-white font-bold text-lg rounded-xl shadow-lg hover:bg-sky-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-sky-700"
             >
               {processing ? (
                 <>
@@ -646,10 +611,11 @@ export default function POS() {
               ) : (
                 <>
                   <i className="fa-solid fa-lock mr-2" />
-                  Complete Purchase
+                  Checkout
                 </>
               )}
             </button>
+            </div>
           </div>
         </aside>
 
@@ -661,8 +627,12 @@ export default function POS() {
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
                 <img 
                   className="w-16 h-16 rounded-lg object-cover" 
-                  src={selectedProduct.image_path || 'https://imgs.search.brave.com/DP2afJxazARIwseHVgstUyjfPwZ2BIa4i8jaZkpUR1w/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2FkL2Vj/LzM5L2FkZWMzOTY0/ODZhY2FlZDE3MWIy/YjlkY2JlZDMzZmE4/L.mpwZw'} 
-                  alt={selectedProduct.name} 
+                  src={selectedProduct.image_path || DEFAULT_PRODUCT_IMAGE} 
+                  alt={selectedProduct.name}
+                  onError={(e) => {
+                    e.target.src = DEFAULT_PRODUCT_IMAGE;
+                    e.target.onerror = null;
+                  }}
                 />
                                 <div>
                     <h4 className="font-semibold text-text-primary">{selectedProduct.name}</h4>
@@ -678,7 +648,7 @@ export default function POS() {
               type="number"
               placeholder="Enter quantity"
               value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              onChange={(e) => setQuantity(parseInt(e.target.value) || null)}
               inputProps={{
                 className: 'w-full px-4 py-2 bg-white border border-border-light rounded-lg focus:ring-2 focus:ring-sky-500 focus:outline-none'
               }}
